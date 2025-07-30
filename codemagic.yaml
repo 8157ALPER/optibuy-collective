@@ -10,58 +10,20 @@ workflows:
         PACKAGE_NAME: "com.optibuy.collective"
       node: 22.12.0
     scripts:
-      - name: Extract source code archives
-        script: |
-          echo "=== Repository contents ==="
-          ls -la
-          echo "=== Extracting archives ==="
-          if [ -f "client.tar.gz" ]; then
-            echo "Extracting client.tar.gz..."
-            tar -xzf client.tar.gz
-          fi
-          if [ -f "server.tar.gz" ]; then
-            echo "Extracting server.tar.gz..."
-            tar -xzf server.tar.gz
-          fi
-          if [ -f "shared.tar.gz" ]; then
-            echo "Extracting shared.tar.gz..."
-            tar -xzf shared.tar.gz
-          fi
-          echo "=== After extraction ==="
-          ls -la
       - name: Install dependencies
         script: |
-          echo "=== Installing root dependencies ==="
           npm install
-          echo "=== Installing client dependencies ==="
-          if [ -d "client" ]; then
-            cd client
-            npm install
-            cd ..
-          fi
       - name: Build web assets
         script: |
-          echo "=== Building web assets ==="
-          echo "Checking for vite binary..."
-          find . -name "vite" -type f 2>/dev/null | head -5
-          echo "Node modules structure:"
-          ls -la node_modules/.bin/ | grep vite || echo "Vite not found in node_modules/.bin"
+          ls -la
+          echo "Checking for client directory..."
           if [ -d "client" ]; then
-            echo "Client directory found, building from client/"
-            cd client
-            if [ -f "../node_modules/.bin/vite" ]; then
-              echo "Using ../node_modules/.bin/vite"
-              ../node_modules/.bin/vite build --outDir ../dist/public --emptyOutDir
-            elif [ -f "./node_modules/.bin/vite" ]; then
-              echo "Using ./node_modules/.bin/vite"
-              ./node_modules/.bin/vite build --outDir ../dist/public --emptyOutDir
-            else
-              echo "Using npx vite"
-              npx vite build --outDir ../dist/public --emptyOutDir
-            fi
+            echo "Client directory found"
+            cd client && ../node_modules/.bin/vite build --outDir ../dist/public
           else
-            echo "ERROR: Client directory still missing after extraction"
-            exit 1
+            echo "Client directory not found, using root build"
+            mkdir -p dist/public
+            ./node_modules/.bin/vite build --root client --outDir dist/public
           fi
       - name: Setup Android signing
         script: |
