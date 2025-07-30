@@ -35,10 +35,23 @@ workflows:
       - name: Build web assets
         script: |
           echo "=== Building web assets ==="
+          echo "Checking for vite binary..."
+          find . -name "vite" -type f 2>/dev/null | head -5
+          echo "Node modules structure:"
+          ls -la node_modules/.bin/ | grep vite || echo "Vite not found in node_modules/.bin"
           if [ -d "client" ]; then
             echo "Client directory found, building from client/"
             cd client
-            ../node_modules/.bin/vite build --outDir ../dist/public
+            if [ -f "../node_modules/.bin/vite" ]; then
+              echo "Using ../node_modules/.bin/vite"
+              ../node_modules/.bin/vite build --outDir ../dist/public
+            elif [ -f "./node_modules/.bin/vite" ]; then
+              echo "Using ./node_modules/.bin/vite"
+              ./node_modules/.bin/vite build --outDir ../dist/public
+            else
+              echo "Using npx vite"
+              npx vite build --outDir ../dist/public
+            fi
           else
             echo "ERROR: Client directory still missing after extraction"
             exit 1
