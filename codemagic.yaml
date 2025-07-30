@@ -143,6 +143,84 @@ workflows:
           })
           EOF
           
+          # Create PostCSS config in client directory
+          cat > client/postcss.config.js << 'EOF'
+          export default {
+            plugins: {
+              tailwindcss: {},
+              autoprefixer: {},
+            },
+          }
+          EOF
+          
+          # Create Tailwind config in client directory
+          cat > client/tailwind.config.js << 'EOF'
+          /** @type {import('tailwindcss').Config} */
+          export default {
+            content: [
+              "./index.html",
+              "./src/**/*.{js,ts,jsx,tsx}",
+            ],
+            theme: {
+              extend: {},
+            },
+            plugins: [],
+          }
+          EOF
+          
+          # Create basic CSS file with Tailwind directives
+          cat > client/src/index.css << 'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+          
+          :root {
+            font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            font-weight: 400;
+          }
+          
+          body {
+            margin: 0;
+            display: flex;
+            place-items: center;
+            min-width: 320px;
+            min-height: 100vh;
+          }
+          
+          #root {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+          }
+          EOF
+          
+          # Create basic main.tsx file
+          cat > client/src/main.tsx << 'EOF'
+          import React from 'react'
+          import ReactDOM from 'react-dom/client'
+          import './index.css'
+          
+          function App() {
+            return (
+              <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+                <div className="bg-white p-8 rounded-lg shadow-md">
+                  <h1 className="text-2xl font-bold text-gray-900 mb-4">OptiBuy</h1>
+                  <p className="text-gray-600">Collective Purchase Platform</p>
+                  <p className="text-sm text-gray-500 mt-2">Ready for Android build</p>
+                </div>
+              </div>
+            )
+          }
+          
+          ReactDOM.createRoot(document.getElementById('root')!).render(
+            <React.StrictMode>
+              <App />
+            </React.StrictMode>,
+          )
+          EOF
+          
           echo "=== Installing root dependencies ==="
           npm install
           echo "=== Installing client dependencies ==="
@@ -154,6 +232,8 @@ workflows:
         script: |
           echo "=== Building web assets ==="
           cd client
+          echo "Installing additional dependencies..."
+          npm install tailwindcss autoprefixer postcss
           echo "Building from organized client directory..."
           npx vite build
 
