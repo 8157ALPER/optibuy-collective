@@ -260,13 +260,36 @@ workflows:
 
       - name: Install Capacitor and add Android platform
         script: |
-          echo "=== Installing TypeScript and Capacitor ==="
-          npm install -g typescript @capacitor/cli @capacitor/core @capacitor/android
-          npm install -D typescript
+          echo "=== Cleaning up conflicting configs ==="
+          rm -f capacitor.config.ts capacitor.config.json
+          
+          echo "=== Installing Capacitor dependencies locally ==="
+          npm install @capacitor/core @capacitor/cli @capacitor/android typescript
+          
+          echo "=== Creating package.json if missing ==="
+          if [ ! -f "package.json" ]; then
+            cat > package.json << 'EOF'
+          {
+            "name": "optibuy-app",
+            "version": "1.0.0",
+            "main": "index.js",
+            "scripts": {
+              "build": "echo 'Build complete'"
+            },
+            "dependencies": {
+              "@capacitor/core": "^6.0.0",
+              "@capacitor/cli": "^6.0.0",
+              "@capacitor/android": "^6.0.0"
+            }
+          }
+          EOF
+          fi
           
           echo "=== Creating Capacitor configuration ==="
-          cat > capacitor.config.js << 'EOF'
-          const config = {
+          cat > capacitor.config.ts << 'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
+          
+          const config: CapacitorConfig = {
             appId: 'com.optibuy.collective',
             appName: 'OptiBuy',
             webDir: 'dist/public',
@@ -275,19 +298,20 @@ workflows:
             }
           };
           
-          module.exports = config;
+          export default config;
           EOF
           
           echo "=== Verifying web directory exists ==="
-          ls -la dist/public/ || echo "Web directory missing - creating minimal structure"
-          mkdir -p dist/public
-          echo '<!DOCTYPE html><html><head><title>OptiBuy</title></head><body><h1>OptiBuy</h1></body></html>' > dist/public/index.html
+          ls -la dist/public/
           
           echo "=== Initializing Capacitor project ==="
           npx cap init "OptiBuy" "com.optibuy.collective" --web-dir="dist/public"
           
           echo "=== Adding Android platform ==="
           npx cap add android
+          
+          echo "=== Verifying Android platform added ==="
+          ls -la android/
 
       - name: Configure debug signing in Android project
         script: |
