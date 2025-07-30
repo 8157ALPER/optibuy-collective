@@ -1,16 +1,14 @@
 workflows:
   android-workflow:
-    name: OptiBuy Android AAB Build
+    name: OptiBuy Android AAB Build (Debug Signing)
     max_build_duration: 120
     instance_type: mac_mini_m1
     environment:
-      groups:
-        - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
       node: 22.12.0
     scripts:
-      - name: Analyze and restructure repository
+      - name: Reorganize scattered files into proper structure
         script: |
           echo "=== Repository Analysis ==="
           ls -la
@@ -38,36 +36,57 @@ workflows:
           
           # Move React/TypeScript files to client/src
           echo "Moving React files to client/src..."
-          for file in *.tsx *.ts *.jsx *.js; do
-            if [ -f "$file" ] && [ "$file" != "vite.config.ts" ] && [ "$file" != "tailwind.config.ts" ]; then
-              mv "$file" client/src/ 2>/dev/null || true
+          for file in *.tsx *.jsx; do
+            if [ -f "$file" ] && [[ "$file" != "vite.config.ts" ]] && [[ "$file" != "tailwind.config.ts" ]]; then
+              cp "$file" client/src/ 2>/dev/null || true
+            fi
+          done
+          
+          # Move specific TypeScript files (excluding config files)
+          for file in main.ts App.ts index.ts utils.ts queryClient.ts; do
+            if [ -f "$file" ]; then
+              cp "$file" client/src/ 2>/dev/null || true
             fi
           done
           
           # Move CSS files
           for file in *.css; do
             if [ -f "$file" ]; then
-              mv "$file" client/src/ 2>/dev/null || true
+              cp "$file" client/src/ 2>/dev/null || true
             fi
           done
           
-          # Handle components directory
-          if [ -d "components" ]; then
-            mv components client/src/ 2>/dev/null || true
-          fi
-          
-          # Handle UI components in root
+          # Create components directory and move UI components
           mkdir -p client/src/components/ui
-          for file in *.tsx; do
+          mkdir -p client/src/pages
+          mkdir -p client/src/hooks
+          mkdir -p client/src/lib
+          
+          # Move UI component files to proper locations
+          for file in alert-dialog.tsx aspect-ratio.tsx avatar.tsx badge.tsx button.tsx card.tsx checkbox.tsx dialog.tsx dropdown-menu.tsx form.tsx input.tsx label.tsx popover.tsx scroll-area.tsx select.tsx separator.tsx sheet.tsx skeleton.tsx slider.tsx switch.tsx table.tsx tabs.tsx textarea.tsx toast.tsx toaster.tsx toggle.tsx tooltip.tsx; do
             if [ -f "$file" ]; then
-              mv "$file" client/src/components/ui/ 2>/dev/null || true
+              cp "$file" client/src/components/ui/ 2>/dev/null || true
+            fi
+          done
+          
+          # Move page components
+          for file in *dashboard*.tsx *profile*.tsx *plans*.tsx *categories*.tsx *onboarding*.tsx; do
+            if [ -f "$file" ]; then
+              cp "$file" client/src/pages/ 2>/dev/null || true
+            fi
+          done
+          
+          # Move hooks
+          for file in use-*.tsx use-*.ts; do
+            if [ -f "$file" ]; then
+              cp "$file" client/src/hooks/ 2>/dev/null || true
             fi
           done
           
           echo "=== Final structure ==="
           find client -type f | head -20
-          
-      - name: Create client package.json
+
+      - name: Create client package.json and install dependencies
         script: |
           cat > client/package.json << 'EOF'
           {
@@ -105,8 +124,6 @@ workflows:
           }
           EOF
           
-      - name: Create vite config for client
-        script: |
           cat > client/vite.config.ts << 'EOF'
           import { defineConfig } from 'vite'
           import react from '@vitejs/plugin-react'
@@ -126,104 +143,102 @@ workflows:
           })
           EOF
           
-      - name: Install dependencies
-        script: |
           echo "=== Installing root dependencies ==="
           npm install
           echo "=== Installing client dependencies ==="
           cd client
           npm install
           cd ..
-          
+
       - name: Build web assets
         script: |
           echo "=== Building web assets ==="
           cd client
+          echo "Building from organized client directory..."
           npx vite build
-          cd ..
-          echo "=== Build output ==="
-          ls -la dist/public/
-          
-      - name: Setup Android signing
+
+      - name: Create debug keystore (no environment variables needed)
         script: |
-          echo $CM_KEYSTORE | base64 --decode > /tmp/keystore.keystore
-          
+          echo "=== Creating debug keystore for closed testing ==="
+          keytool -genkey -v -keystore debug.keystore -alias optibuy \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=OptiBuy Debug, OU=Development, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
+            -storepass android -keypass android
+          echo "Debug keystore created successfully"
+          ls -la debug.keystore
+
+      - name: Set up Java
+        script: |
+          echo 'export JAVA_HOME="/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home"' >> ~/.zshrc
+          source ~/.zshrc
+
+      - name: Setup Android SDK
+        script: |
+          echo 'export ANDROID_SDK_ROOT="$HOME/programs/android-sdk-macosx"' >> ~/.zshrc
+          echo 'export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools' >> ~/.zshrc
+          source ~/.zshrc
+
       - name: Add Android platform
         script: |
           npx cap add android
+
+      - name: Configure debug signing in Android project
+        script: |
+          echo "=== Configuring debug signing ==="
+          mkdir -p android/app
+          cat > android/key.properties << EOF
+          storePassword=android
+          keyPassword=android
+          keyAlias=optibuy
+          storeFile=../../debug.keystore
+          EOF
           
+          # Update build.gradle to use debug signing
+          cat >> android/app/build.gradle << 'EOF'
+          
+          android {
+              signingConfigs {
+                  debug {
+                      keyAlias 'optibuy'
+                      keyPassword 'android'
+                      storeFile file('../../debug.keystore')
+                      storePassword 'android'
+                  }
+                  release {
+                      keyAlias 'optibuy'
+                      keyPassword 'android'
+                      storeFile file('../../debug.keystore')
+                      storePassword 'android'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+          EOF
+
       - name: Sync Capacitor
         script: |
           npx cap sync android
-          
-      - name: Set up local.properties
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-          
-      - name: Build Android AAB
+
+      - name: Build Android AAB with debug signing
         script: |
           cd android
-          ./gradlew bundleRelease
-          
+          echo "=== Building AAB with debug keystore ==="
+          ./gradlew bundleRelease --stacktrace
+
       - name: Display build info
         script: |
           echo "=== AAB Build Complete ==="
           find android/app/build/outputs -name "*.aab" -exec ls -lh {} \;
-          echo "Download the AAB file from artifacts and manually upload to Google Play Console"
-          
+          echo "=== Debug AAB ready for Google Play Console closed testing ==="
+          echo "Note: This AAB uses debug signing and is suitable for closed testing only"
+
     artifacts:
       - android/app/build/outputs/**/*.aab
-      - android/app/build/outputs/**/mapping.txt
-
-  ios-workflow:
-    name: OptiBuy iOS Build
-    max_build_duration: 120
-    instance_type: mac_mini_m1
-    integrations:
-      app_store_connect: codemagic
-    environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.optibuy.collective
-      vars:
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
-        XCODE_SCHEME: "App"
-        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
-        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-      node: 22.12.0
-      xcode: latest
-      cocoapods: default
-    scripts:
-      - name: Install dependencies
-        script: |
-          npm ci
-      - name: Build web assets
-        script: |
-          npm run build
-      - name: Add iOS platform
-        script: |
-          npx cap add ios
-      - name: Sync Capacitor
-        script: |
-          npx cap sync ios
-      - name: Set up code signing settings on Xcode project
-        script: |
-          xcode-project use-profiles
-      - name: Build ipa for distribution
-        script: |
-          xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
-        beta_groups:
-          - App Store Connect Users
-        submit_to_app_store: false
+      - debug.keystore
