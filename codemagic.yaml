@@ -316,41 +316,61 @@ workflows:
       - name: Configure debug signing in Android project
         script: |
           echo "=== Configuring debug signing ==="
-          mkdir -p android/app
           
-          # Create key.properties file
+          # Copy debug keystore to android directory for easier access
+          cp debug.keystore android/
+          
+          # Create key.properties file in android directory
           cat > android/key.properties << EOF
           storePassword=android
           keyPassword=android
           keyAlias=optibuy
-          storeFile=../debug.keystore
+          storeFile=debug.keystore
           EOF
           
-          # Update app/build.gradle to use debug signing
           echo "=== Updating Android build.gradle for debug signing ==="
-          sed -i '' '/android {/a\
-          \    signingConfigs {\
-          \        debug {\
-          \            keyAlias "optibuy"\
-          \            keyPassword "android"\
-          \            storeFile file("../debug.keystore")\
-          \            storePassword "android"\
-          \        }\
-          \        release {\
-          \            keyAlias "optibuy"\
-          \            keyPassword "android"\
-          \            storeFile file("../debug.keystore")\
-          \            storePassword "android"\
-          \        }\
-          \    }\
-          \    buildTypes {\
-          \        release {\
-          \            signingConfig signingConfigs.release\
-          \        }\
-          \        debug {\
-          \            signingConfig signingConfigs.debug\
-          \        }\
-          \    }' android/app/build.gradle
+          # Backup original build.gradle
+          cp android/app/build.gradle android/app/build.gradle.backup
+          
+          # Add signing configuration to build.gradle
+          cat >> android/app/build.gradle << 'EOF'
+
+// Debug signing configuration
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+
+android {
+    signingConfigs {
+        debug {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+    
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+EOF
+          
+          echo "=== Verifying keystore and config ==="
+          ls -la android/debug.keystore android/key.properties
 
       - name: Sync Capacitor
         script: |
@@ -359,8 +379,20 @@ workflows:
       - name: Build Android AAB with debug signing
         script: |
           cd android
+          echo "=== Gradle wrapper permissions ==="
+          chmod +x gradlew
+          
+          echo "=== Gradle project info ==="
+          ./gradlew projects
+          
+          echo "=== Clean build ==="
+          ./gradlew clean
+          
           echo "=== Building AAB with debug keystore ==="
-          ./gradlew bundleRelease --stacktrace
+          ./gradlew bundleRelease --stacktrace --info
+          
+          echo "=== Build outputs ==="
+          find . -name "*.aab" -exec ls -lh {} \;
 
       - name: Display build info
         script: |
