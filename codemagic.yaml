@@ -8,7 +8,7 @@ workflows:
         - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
-      node: 20.11.0
+      node: 22.12.0
     scripts:
       - name: Install dependencies
         script: |
@@ -16,7 +16,8 @@ workflows:
       - name: Build web assets
         script: |
           mkdir -p dist/public
-          npx vite build --config vite.config.ts
+          cd client
+          ../node_modules/.bin/vite build --outDir ../dist/public
       - name: Setup Android signing
         script: |
           echo $CM_KEYSTORE | base64 --decode > $CM_KEYSTORE_PATH
@@ -70,7 +71,7 @@ workflows:
         APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
         APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
         APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-      node: 20.11.0
+      node: 22.12.0
       xcode: latest
       cocoapods: default
     scripts:
