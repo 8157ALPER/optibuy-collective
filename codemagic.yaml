@@ -258,49 +258,71 @@ workflows:
           echo 'export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools' >> ~/.zshrc
           source ~/.zshrc
 
-      - name: Add Android platform
+      - name: Install Capacitor and add Android platform
         script: |
+          echo "=== Installing Capacitor CLI and Core ==="
+          npm install -g @capacitor/cli @capacitor/core @capacitor/android
+          
+          echo "=== Creating Capacitor configuration ==="
+          cat > capacitor.config.ts << 'EOF'
+          import { CapacitorConfig } from '@capacitor/cli';
+          
+          const config: CapacitorConfig = {
+            appId: 'com.optibuy.collective',
+            appName: 'OptiBuy',
+            webDir: 'dist/public',
+            server: {
+              androidScheme: 'https'
+            }
+          };
+          
+          export default config;
+          EOF
+          
+          echo "=== Initializing Capacitor project ==="
+          npx cap init "OptiBuy" "com.optibuy.collective" --web-dir="dist/public"
+          
+          echo "=== Adding Android platform ==="
           npx cap add android
 
       - name: Configure debug signing in Android project
         script: |
           echo "=== Configuring debug signing ==="
           mkdir -p android/app
+          
+          # Create key.properties file
           cat > android/key.properties << EOF
           storePassword=android
           keyPassword=android
           keyAlias=optibuy
-          storeFile=../../debug.keystore
+          storeFile=../debug.keystore
           EOF
           
-          # Update build.gradle to use debug signing
-          cat >> android/app/build.gradle << 'EOF'
-          
-          android {
-              signingConfigs {
-                  debug {
-                      keyAlias 'optibuy'
-                      keyPassword 'android'
-                      storeFile file('../../debug.keystore')
-                      storePassword 'android'
-                  }
-                  release {
-                      keyAlias 'optibuy'
-                      keyPassword 'android'
-                      storeFile file('../../debug.keystore')
-                      storePassword 'android'
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                  }
-                  debug {
-                      signingConfig signingConfigs.debug
-                  }
-              }
-          }
-          EOF
+          # Update app/build.gradle to use debug signing
+          echo "=== Updating Android build.gradle for debug signing ==="
+          sed -i '' '/android {/a\
+          \    signingConfigs {\
+          \        debug {\
+          \            keyAlias "optibuy"\
+          \            keyPassword "android"\
+          \            storeFile file("../debug.keystore")\
+          \            storePassword "android"\
+          \        }\
+          \        release {\
+          \            keyAlias "optibuy"\
+          \            keyPassword "android"\
+          \            storeFile file("../debug.keystore")\
+          \            storePassword "android"\
+          \        }\
+          \    }\
+          \    buildTypes {\
+          \        release {\
+          \            signingConfig signingConfigs.release\
+          \        }\
+          \        debug {\
+          \            signingConfig signingConfigs.debug\
+          \        }\
+          \    }' android/app/build.gradle
 
       - name: Sync Capacitor
         script: |
