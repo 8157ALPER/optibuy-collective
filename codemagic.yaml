@@ -15,7 +15,8 @@ workflows:
           npm install
       - name: Build web assets
         script: |
-          npm run build
+          mkdir -p dist/public
+          npx vite build --config vite.config.ts
       - name: Setup Android signing
         script: |
           echo $CM_KEYSTORE | base64 --decode > $CM_KEYSTORE_PATH
