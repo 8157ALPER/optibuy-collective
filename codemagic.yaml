@@ -14,11 +14,9 @@ workflows:
           ls -la
           echo "=== Creating proper project structure ==="
           
-          # Create necessary directories
           mkdir -p client/src client/public
           mkdir -p server shared dist/public
           
-          # Create basic index.html for client
           cat > client/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -34,7 +32,6 @@ workflows:
           </html>
           EOF
           
-          # Move React/TypeScript files to client/src
           echo "Moving React files to client/src..."
           for file in *.tsx *.jsx; do
             if [ -f "$file" ] && [[ "$file" != "vite.config.ts" ]] && [[ "$file" != "tailwind.config.ts" ]]; then
@@ -42,41 +39,35 @@ workflows:
             fi
           done
           
-          # Move specific TypeScript files (excluding config files)
           for file in main.ts App.ts index.ts utils.ts queryClient.ts; do
             if [ -f "$file" ]; then
               cp "$file" client/src/ 2>/dev/null || true
             fi
           done
           
-          # Move CSS files
           for file in *.css; do
             if [ -f "$file" ]; then
               cp "$file" client/src/ 2>/dev/null || true
             fi
           done
           
-          # Create components directory and move UI components
           mkdir -p client/src/components/ui
           mkdir -p client/src/pages
           mkdir -p client/src/hooks
           mkdir -p client/src/lib
           
-          # Move UI component files to proper locations
           for file in alert-dialog.tsx aspect-ratio.tsx avatar.tsx badge.tsx button.tsx card.tsx checkbox.tsx dialog.tsx dropdown-menu.tsx form.tsx input.tsx label.tsx popover.tsx scroll-area.tsx select.tsx separator.tsx sheet.tsx skeleton.tsx slider.tsx switch.tsx table.tsx tabs.tsx textarea.tsx toast.tsx toaster.tsx toggle.tsx tooltip.tsx; do
             if [ -f "$file" ]; then
               cp "$file" client/src/components/ui/ 2>/dev/null || true
             fi
           done
           
-          # Move page components
           for file in *dashboard*.tsx *profile*.tsx *plans*.tsx *categories*.tsx *onboarding*.tsx; do
             if [ -f "$file" ]; then
               cp "$file" client/src/pages/ 2>/dev/null || true
             fi
           done
           
-          # Move hooks
           for file in use-*.tsx use-*.ts; do
             if [ -f "$file" ]; then
               cp "$file" client/src/hooks/ 2>/dev/null || true
@@ -143,7 +134,6 @@ workflows:
           })
           EOF
           
-          # Create PostCSS config in client directory
           cat > client/postcss.config.js << 'EOF'
           export default {
             plugins: {
@@ -153,7 +143,6 @@ workflows:
           }
           EOF
           
-          # Create Tailwind config in client directory
           cat > client/tailwind.config.js << 'EOF'
           /** @type {import('tailwindcss').Config} */
           export default {
@@ -168,7 +157,6 @@ workflows:
           }
           EOF
           
-          # Create basic CSS file with Tailwind directives
           cat > client/src/index.css << 'EOF'
           @tailwind base;
           @tailwind components;
@@ -196,7 +184,6 @@ workflows:
           }
           EOF
           
-          # Create basic main.tsx file
           cat > client/src/main.tsx << 'EOF'
           import React from 'react'
           import ReactDOM from 'react-dom/client'
@@ -237,13 +224,10 @@ workflows:
           echo "Building from organized client directory..."
           npx vite build
 
-      - name: Create debug keystore (no environment variables needed)
+      - name: Create debug keystore
         script: |
           echo "=== Creating debug keystore for closed testing ==="
-          keytool -genkey -v -keystore debug.keystore -alias optibuy \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=OptiBuy Debug, OU=Development, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
-            -storepass android -keypass android
+          keytool -genkey -v -keystore debug.keystore -alias optibuy -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=OptiBuy Debug, OU=Development, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" -storepass android -keypass android
           echo "Debug keystore created successfully"
           ls -la debug.keystore
 
@@ -316,59 +300,13 @@ workflows:
       - name: Configure debug signing in Android project
         script: |
           echo "=== Configuring debug signing ==="
-          
-          # Copy debug keystore to android directory for easier access
           cp debug.keystore android/
-          
-          # Create key.properties file in android directory
-          cat > android/key.properties << EOF
+          cat > android/key.properties << 'EOF'
           storePassword=android
           keyPassword=android
           keyAlias=optibuy
           storeFile=debug.keystore
           EOF
-          
-          echo "=== Updating Android build.gradle for debug signing ==="
-          # Backup original build.gradle
-          cp android/app/build.gradle android/app/build.gradle.backup
-          
-          # Add signing configuration to build.gradle
-          cat >> android/app/build.gradle << 'EOF'
-
-// Debug signing configuration
-def keystorePropertiesFile = rootProject.file("key.properties")
-def keystoreProperties = new Properties()
-keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-
-android {
-    signingConfigs {
-        debug {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
-        }
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
-        }
-    }
-    
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-}
-EOF
-          
           echo "=== Verifying keystore and config ==="
           ls -la android/debug.keystore android/key.properties
 
@@ -381,16 +319,10 @@ EOF
           cd android
           echo "=== Gradle wrapper permissions ==="
           chmod +x gradlew
-          
-          echo "=== Gradle project info ==="
-          ./gradlew projects
-          
           echo "=== Clean build ==="
           ./gradlew clean
-          
           echo "=== Building AAB with debug keystore ==="
-          ./gradlew bundleRelease --stacktrace --info
-          
+          ./gradlew bundleRelease --stacktrace
           echo "=== Build outputs ==="
           find . -name "*.aab" -exec ls -lh {} \;
 
@@ -399,7 +331,6 @@ EOF
           echo "=== AAB Build Complete ==="
           find android/app/build/outputs -name "*.aab" -exec ls -lh {} \;
           echo "=== Debug AAB ready for Google Play Console closed testing ==="
-          echo "Note: This AAB uses debug signing and is suitable for closed testing only"
 
     artifacts:
       - android/app/build/outputs/**/*.aab
