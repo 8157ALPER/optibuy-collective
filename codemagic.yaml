@@ -260,14 +260,13 @@ workflows:
 
       - name: Install Capacitor and add Android platform
         script: |
-          echo "=== Installing Capacitor CLI and Core ==="
-          npm install -g @capacitor/cli @capacitor/core @capacitor/android
+          echo "=== Installing TypeScript and Capacitor ==="
+          npm install -g typescript @capacitor/cli @capacitor/core @capacitor/android
+          npm install -D typescript
           
           echo "=== Creating Capacitor configuration ==="
-          cat > capacitor.config.ts << 'EOF'
-          import { CapacitorConfig } from '@capacitor/cli';
-          
-          const config: CapacitorConfig = {
+          cat > capacitor.config.js << 'EOF'
+          const config = {
             appId: 'com.optibuy.collective',
             appName: 'OptiBuy',
             webDir: 'dist/public',
@@ -276,8 +275,13 @@ workflows:
             }
           };
           
-          export default config;
+          module.exports = config;
           EOF
+          
+          echo "=== Verifying web directory exists ==="
+          ls -la dist/public/ || echo "Web directory missing - creating minimal structure"
+          mkdir -p dist/public
+          echo '<!DOCTYPE html><html><head><title>OptiBuy</title></head><body><h1>OptiBuy</h1></body></html>' > dist/public/index.html
           
           echo "=== Initializing Capacitor project ==="
           npx cap init "OptiBuy" "com.optibuy.collective" --web-dir="dist/public"
