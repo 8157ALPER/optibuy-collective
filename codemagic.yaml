@@ -307,6 +307,33 @@ workflows:
           keyAlias=optibuy
           storeFile=debug.keystore
           EOF
+          
+          echo "=== Adding signing config to build.gradle ==="
+          cat >> android/app/build.gradle << 'EOF'
+
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias'] ?: 'optibuy'
+            keyPassword keystoreProperties['keyPassword'] ?: 'android'
+            storeFile file(keystoreProperties['storeFile'] ?: 'debug.keystore')
+            storePassword keystoreProperties['storePassword'] ?: 'android'
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+EOF
+          
           echo "=== Verifying keystore and config ==="
           ls -la android/debug.keystore android/key.properties
 
@@ -319,12 +346,26 @@ workflows:
           cd android
           echo "=== Gradle wrapper permissions ==="
           chmod +x gradlew
+          
+          echo "=== Checking Android project structure ==="
+          ls -la app/src/main/
+          
           echo "=== Clean build ==="
           ./gradlew clean
+          
           echo "=== Building AAB with debug keystore ==="
-          ./gradlew bundleRelease --stacktrace
-          echo "=== Build outputs ==="
-          find . -name "*.aab" -exec ls -lh {} \;
+          ./gradlew bundleRelease --info --stacktrace
+          
+          echo "=== Checking build outputs ==="
+          ls -la app/build/outputs/
+          find app/build/outputs -name "*.aab" -exec ls -lh {} \;
+          
+          echo "=== If no AAB found, try alternative build ==="
+          if [ ! -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            echo "AAB not found, trying assembleRelease..."
+            ./gradlew assembleRelease --info
+            find app/build/outputs -name "*.apk" -exec ls -lh {} \;
+          fi
 
       - name: Display build info
         script: |
@@ -334,4 +375,7 @@ workflows:
 
     artifacts:
       - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
       - debug.keystore
+      - android/app/build/outputs/bundle/release/
+      - android/app/build/outputs/apk/release/
