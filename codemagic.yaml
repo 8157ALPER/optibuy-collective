@@ -309,30 +309,28 @@ workflows:
           EOF
           
           echo "=== Adding signing config to build.gradle ==="
-          cat >> android/app/build.gradle << 'EOF'
-
-def keystorePropertiesFile = rootProject.file("key.properties")
-def keystoreProperties = new Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
-android {
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias'] ?: 'optibuy'
-            keyPassword keystoreProperties['keyPassword'] ?: 'android'
-            storeFile file(keystoreProperties['storeFile'] ?: 'debug.keystore')
-            storePassword keystoreProperties['storePassword'] ?: 'android'
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
-}
-EOF
+          echo "" >> android/app/build.gradle
+          echo "def keystorePropertiesFile = rootProject.file('key.properties')" >> android/app/build.gradle
+          echo "def keystoreProperties = new Properties()" >> android/app/build.gradle
+          echo "if (keystorePropertiesFile.exists()) {" >> android/app/build.gradle
+          echo "    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))" >> android/app/build.gradle
+          echo "}" >> android/app/build.gradle
+          echo "" >> android/app/build.gradle
+          echo "android {" >> android/app/build.gradle
+          echo "    signingConfigs {" >> android/app/build.gradle
+          echo "        release {" >> android/app/build.gradle
+          echo "            keyAlias keystoreProperties['keyAlias'] ?: 'optibuy'" >> android/app/build.gradle
+          echo "            keyPassword keystoreProperties['keyPassword'] ?: 'android'" >> android/app/build.gradle
+          echo "            storeFile file(keystoreProperties['storeFile'] ?: 'debug.keystore')" >> android/app/build.gradle
+          echo "            storePassword keystoreProperties['storePassword'] ?: 'android'" >> android/app/build.gradle
+          echo "        }" >> android/app/build.gradle
+          echo "    }" >> android/app/build.gradle
+          echo "    buildTypes {" >> android/app/build.gradle
+          echo "        release {" >> android/app/build.gradle
+          echo "            signingConfig signingConfigs.release" >> android/app/build.gradle
+          echo "        }" >> android/app/build.gradle
+          echo "    }" >> android/app/build.gradle
+          echo "}" >> android/app/build.gradle
           
           echo "=== Verifying keystore and config ==="
           ls -la android/debug.keystore android/key.properties
