@@ -121,79 +121,55 @@ workflows:
 
       - name: Manual Gradle configuration
         script: |
-          echo "=== Adding release signing configuration manually ==="
+          echo "=== Creating custom build.gradle ==="
           cd android
           
-          # Read the current build.gradle and add signing config
-          cat > app/build.gradle << 'EOF'
-apply plugin: 'com.android.application'
-
-android {
-    namespace 'com.optibuy.collective'
-    compileSdk 34
-    
-    defaultConfig {
-        applicationId "com.optibuy.collective"
-        minSdk 22
-        targetSdk 34
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-    }
-    
-    signingConfigs {
-        release {
-            keyAlias 'optibuy'
-            keyPassword 'android'
-            storeFile file('debug.keystore')
-            storePassword 'android'
-        }
-    }
-    
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
-        }
-        debug {
-            signingConfig signingConfigs.release
-        }
-    }
-    
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-}
-
-dependencies {
-    implementation 'androidx.core:core:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.activity:activity:1.8.2'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation project(':capacitor-android')
-    implementation project(':capacitor-app')
-    implementation project(':capacitor-haptics')
-    implementation project(':capacitor-keyboard')
-    implementation project(':capacitor-status-bar')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
-}
-
-apply from: 'capacitor.build.gradle'
-
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. $e")
-}
-EOF
+          echo "apply plugin: 'com.android.application'" > app/build.gradle
+          echo "" >> app/build.gradle
+          echo "android {" >> app/build.gradle
+          echo "    namespace 'com.optibuy.collective'" >> app/build.gradle
+          echo "    compileSdk 34" >> app/build.gradle
+          echo "    " >> app/build.gradle
+          echo "    defaultConfig {" >> app/build.gradle
+          echo "        applicationId \"com.optibuy.collective\"" >> app/build.gradle
+          echo "        minSdk 22" >> app/build.gradle
+          echo "        targetSdk 34" >> app/build.gradle
+          echo "        versionCode 1" >> app/build.gradle
+          echo "        versionName \"1.0\"" >> app/build.gradle
+          echo "        testInstrumentationRunner \"androidx.test.runner.AndroidJUnitRunner\"" >> app/build.gradle
+          echo "    }" >> app/build.gradle
+          echo "    " >> app/build.gradle
+          echo "    signingConfigs {" >> app/build.gradle
+          echo "        release {" >> app/build.gradle
+          echo "            keyAlias 'optibuy'" >> app/build.gradle
+          echo "            keyPassword 'android'" >> app/build.gradle
+          echo "            storeFile file('debug.keystore')" >> app/build.gradle
+          echo "            storePassword 'android'" >> app/build.gradle
+          echo "        }" >> app/build.gradle
+          echo "    }" >> app/build.gradle
+          echo "    " >> app/build.gradle
+          echo "    buildTypes {" >> app/build.gradle
+          echo "        release {" >> app/build.gradle
+          echo "            minifyEnabled false" >> app/build.gradle
+          echo "            signingConfig signingConfigs.release" >> app/build.gradle
+          echo "        }" >> app/build.gradle
+          echo "    }" >> app/build.gradle
+          echo "    " >> app/build.gradle
+          echo "    compileOptions {" >> app/build.gradle
+          echo "        sourceCompatibility JavaVersion.VERSION_1_8" >> app/build.gradle
+          echo "        targetCompatibility JavaVersion.VERSION_1_8" >> app/build.gradle
+          echo "    }" >> app/build.gradle
+          echo "}" >> app/build.gradle
+          echo "" >> app/build.gradle
+          echo "dependencies {" >> app/build.gradle
+          echo "    implementation 'androidx.core:core:1.12.0'" >> app/build.gradle
+          echo "    implementation 'androidx.appcompat:appcompat:1.6.1'" >> app/build.gradle
+          echo "    implementation 'com.google.android.material:material:1.11.0'" >> app/build.gradle
+          echo "    implementation 'androidx.activity:activity:1.8.2'" >> app/build.gradle
+          echo "    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'" >> app/build.gradle
+          echo "}" >> app/build.gradle
+          echo "" >> app/build.gradle
+          echo "apply from: 'capacitor.build.gradle'" >> app/build.gradle
           
           echo "=== New build.gradle content ==="
           cat app/build.gradle
