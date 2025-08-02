@@ -44,11 +44,35 @@ workflows:
 
       - name: Install dependencies and build web assets
         script: |
-          echo "=== Installing npm dependencies ==="
-          npm install
+          echo "=== Current package.json ==="
+          cat package.json
+          
+          echo "=== Installing complete dependencies ==="
+          npm install vite @vitejs/plugin-react typescript react react-dom
+          npm install @types/react @types/react-dom
+          npm install tailwindcss postcss autoprefixer
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          
+          echo "=== Verifying Vite installation ==="
+          npx vite --version
+          
+          echo "=== Creating basic vite.config.ts if missing ==="
+          if [ ! -f "vite.config.ts" ]; then
+            cat > vite.config.ts << 'EOF'
+          import { defineConfig } from 'vite'
+          import react from '@vitejs/plugin-react'
+          
+          export default defineConfig({
+            plugins: [react()],
+            build: {
+              outDir: 'dist'
+            }
+          })
+          EOF
+          fi
           
           echo "=== Building web assets ==="
-          npm run build
+          npm run build || npx vite build
           ls -la dist/
 
       - name: Create debug keystore
@@ -59,8 +83,7 @@ workflows:
 
       - name: Install Capacitor and add Android platform
         script: |
-          echo "=== Installing Capacitor ==="
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          echo "=== Capacitor already installed in previous step ==="
           
           echo "=== Initializing Capacitor ==="
           npx cap init "OptiBuy" "com.optibuy.collective" --web-dir=dist
