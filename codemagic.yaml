@@ -50,7 +50,7 @@ workflows:
           echo "=== Installing complete dependencies ==="
           npm install vite @vitejs/plugin-react typescript react react-dom
           npm install @types/react @types/react-dom
-          npm install tailwindcss postcss autoprefixer
+          npm install @tailwindcss/postcss postcss autoprefixer
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
           echo "=== Installing missing Replit plugins as stubs ==="
@@ -80,6 +80,33 @@ workflows:
           
           echo "=== New vite.config.ts content ==="
           cat vite.config.ts
+          
+          echo "=== Creating PostCSS configuration ==="
+          cat > postcss.config.js << 'EOF'
+          module.exports = {
+            plugins: {
+              '@tailwindcss/postcss': {},
+              autoprefixer: {},
+            },
+          }
+          EOF
+          
+          echo "=== Creating Tailwind config ==="
+          cat > tailwind.config.js << 'EOF'
+          module.exports = {
+            content: [
+              "./index.html",
+              "./src/**/*.{js,ts,jsx,tsx}",
+            ],
+            theme: {
+              extend: {},
+            },
+            plugins: [],
+          }
+          EOF
+          
+          echo "=== Configuration files created ==="
+          ls -la *.config.js *.config.ts
           
           echo "=== Building web assets ==="
           npm run build || npx vite build
