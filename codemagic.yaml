@@ -53,23 +53,33 @@ workflows:
           npm install tailwindcss postcss autoprefixer
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
+          echo "=== Installing missing Replit plugins as stubs ==="
+          npm install --save-dev @replit/vite-plugin-runtime-error-modal @replit/vite-plugin-cartographer || echo "Replit plugins not available, will use clean vite config"
+          
           echo "=== Verifying Vite installation ==="
           npx vite --version
           
-          echo "=== Creating basic vite.config.ts if missing ==="
-          if [ ! -f "vite.config.ts" ]; then
-            cat > vite.config.ts << 'EOF'
+          echo "=== Replacing Replit-specific vite.config.ts ==="
+          cat > vite.config.ts << 'EOF'
           import { defineConfig } from 'vite'
           import react from '@vitejs/plugin-react'
           
           export default defineConfig({
             plugins: [react()],
             build: {
-              outDir: 'dist'
+              outDir: 'dist',
+              emptyOutDir: true
+            },
+            resolve: {
+              alias: {
+                '@': '/src'
+              }
             }
           })
           EOF
-          fi
+          
+          echo "=== New vite.config.ts content ==="
+          cat vite.config.ts
           
           echo "=== Building web assets ==="
           npm run build || npx vite build
