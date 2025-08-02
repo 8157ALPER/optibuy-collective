@@ -1,18 +1,11 @@
 workflows:
   android-workflow:
-    name: Android Debug Build
+    name: Android AAB Build
     max_build_duration: 120
     instance_type: mac_mini_m1
-    integrations:
-      app_store_connect: codemagic
     environment:
-      android_signing:
-        - keystore_reference
-      groups:
-        - group_name
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
-        GOOGLE_PLAY_TRACK: internal
       node: 18
     scripts:
       - name: Download and extract client archive
@@ -49,15 +42,12 @@ workflows:
           echo "=== Final project structure ==="
           find src -type f | head -20
 
-      - name: Install Node.js dependencies and debug package.json
+      - name: Install dependencies and build web assets
         script: |
-          echo "=== Current package.json ==="
-          cat package.json
-          
-          echo "=== Installing dependencies ==="
+          echo "=== Installing npm dependencies ==="
           npm install
           
-          echo "=== Verifying Vite build ==="
+          echo "=== Building web assets ==="
           npm run build
           ls -la dist/
 
@@ -67,13 +57,10 @@ workflows:
           keytool -genkey -v -keystore debug.keystore -alias optibuy -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=OptiBuy Debug, O=OptiBuy, C=TR"
           ls -la debug.keystore
 
-      - name: Initialize Capacitor and debug Android setup
+      - name: Install Capacitor and add Android platform
         script: |
           echo "=== Installing Capacitor ==="
           npm install @capacitor/core @capacitor/cli @capacitor/android
-          
-          echo "=== Verifying capacitor.config.ts ==="
-          cat capacitor.config.ts
           
           echo "=== Initializing Capacitor ==="
           npx cap init "OptiBuy" "com.optibuy.collective" --web-dir=dist
@@ -81,20 +68,15 @@ workflows:
           echo "=== Adding Android platform ==="
           npx cap add android
           
-          echo "=== Verifying Android platform ==="
-          ls -la android/
-          ls -la android/app/
+          echo "=== Syncing Capacitor ==="
+          npx cap sync android
 
-      - name: Debug Android Gradle configuration
+      - name: Configure Android signing
         script: |
-          echo "=== Checking original build.gradle ==="
-          cat android/app/build.gradle
-          
-          echo "=== Checking if app has resources ==="
-          ls -la android/app/src/main/
-          
-          echo "=== Configuring signing ==="
+          echo "=== Copying keystore to Android project ==="
           cp debug.keystore android/
+          
+          echo "=== Creating key.properties ==="
           cat > android/key.properties << 'EOF'
           storePassword=android
           keyPassword=android
@@ -102,109 +84,34 @@ workflows:
           storeFile=debug.keystore
           EOF
           
-          echo "=== Original gradle file backup ==="
-          cp android/app/build.gradle android/app/build.gradle.backup
+          echo "=== Verifying files ==="
+          ls -la android/debug.keystore android/key.properties
 
-      - name: Sync Capacitor with detailed logging
-        script: |
-          echo "=== Syncing Capacitor ==="
-          npx cap sync android --verbose
-          
-          echo "=== Checking updated build.gradle ==="
-          cat android/app/build.gradle
-          
-          echo "=== Checking Android manifest ==="
-          cat android/app/src/main/AndroidManifest.xml
-          
-          echo "=== Checking resources ==="
-          find android/app/src/main -type f | head -10
-
-      - name: Manual Gradle configuration
-        script: |
-          echo "=== Creating custom build.gradle ==="
-          cd android
-          
-          echo "apply plugin: 'com.android.application'" > app/build.gradle
-          echo "" >> app/build.gradle
-          echo "android {" >> app/build.gradle
-          echo "    namespace 'com.optibuy.collective'" >> app/build.gradle
-          echo "    compileSdk 34" >> app/build.gradle
-          echo "    " >> app/build.gradle
-          echo "    defaultConfig {" >> app/build.gradle
-          echo "        applicationId \"com.optibuy.collective\"" >> app/build.gradle
-          echo "        minSdk 22" >> app/build.gradle
-          echo "        targetSdk 34" >> app/build.gradle
-          echo "        versionCode 1" >> app/build.gradle
-          echo "        versionName \"1.0\"" >> app/build.gradle
-          echo "        testInstrumentationRunner \"androidx.test.runner.AndroidJUnitRunner\"" >> app/build.gradle
-          echo "    }" >> app/build.gradle
-          echo "    " >> app/build.gradle
-          echo "    signingConfigs {" >> app/build.gradle
-          echo "        release {" >> app/build.gradle
-          echo "            keyAlias 'optibuy'" >> app/build.gradle
-          echo "            keyPassword 'android'" >> app/build.gradle
-          echo "            storeFile file('debug.keystore')" >> app/build.gradle
-          echo "            storePassword 'android'" >> app/build.gradle
-          echo "        }" >> app/build.gradle
-          echo "    }" >> app/build.gradle
-          echo "    " >> app/build.gradle
-          echo "    buildTypes {" >> app/build.gradle
-          echo "        release {" >> app/build.gradle
-          echo "            minifyEnabled false" >> app/build.gradle
-          echo "            signingConfig signingConfigs.release" >> app/build.gradle
-          echo "        }" >> app/build.gradle
-          echo "    }" >> app/build.gradle
-          echo "    " >> app/build.gradle
-          echo "    compileOptions {" >> app/build.gradle
-          echo "        sourceCompatibility JavaVersion.VERSION_1_8" >> app/build.gradle
-          echo "        targetCompatibility JavaVersion.VERSION_1_8" >> app/build.gradle
-          echo "    }" >> app/build.gradle
-          echo "}" >> app/build.gradle
-          echo "" >> app/build.gradle
-          echo "dependencies {" >> app/build.gradle
-          echo "    implementation 'androidx.core:core:1.12.0'" >> app/build.gradle
-          echo "    implementation 'androidx.appcompat:appcompat:1.6.1'" >> app/build.gradle
-          echo "    implementation 'com.google.android.material:material:1.11.0'" >> app/build.gradle
-          echo "    implementation 'androidx.activity:activity:1.8.2'" >> app/build.gradle
-          echo "    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'" >> app/build.gradle
-          echo "}" >> app/build.gradle
-          echo "" >> app/build.gradle
-          echo "apply from: 'capacitor.build.gradle'" >> app/build.gradle
-          
-          echo "=== New build.gradle content ==="
-          cat app/build.gradle
-
-      - name: Gradle build with maximum debugging
+      - name: Build Android AAB
         script: |
           cd android
-          echo "=== Setting permissions ==="
+          echo "=== Setting Gradle permissions ==="
           chmod +x gradlew
           
-          echo "=== Gradle version ==="
-          ./gradlew --version
-          
-          echo "=== Available tasks ==="
-          ./gradlew tasks --all | grep -i bundle
+          echo "=== Checking current build.gradle ==="
+          cat app/build.gradle
           
           echo "=== Clean build ==="
-          ./gradlew clean --info
+          ./gradlew clean
           
-          echo "=== Building AAB with maximum verbosity ==="
-          ./gradlew bundleRelease --info --debug --stacktrace
+          echo "=== Building AAB ==="
+          ./gradlew bundleRelease --stacktrace --info
           
-          echo "=== Alternative: assembleRelease ==="
-          ./gradlew assembleRelease --info --stacktrace
+          echo "=== Alternative: Building APK ==="
+          ./gradlew assembleRelease --stacktrace --info
           
-          echo "=== Checking all build outputs ==="
-          find . -name "*.aab" -o -name "*.apk" -exec ls -lh {} \;
+          echo "=== Checking build outputs ==="
+          find app/build -name "*.aab" -o -name "*.apk" -exec ls -lh {} \;
           
-          echo "=== Build directory contents ==="
-          find app/build -type f -name "*release*" | head -20
+          echo "=== Build directory structure ==="
+          ls -la app/build/outputs/
 
     artifacts:
-      - android/app/build/outputs/**/*
-      - android/app/build/intermediates/**/*.aab
-      - android/app/build/intermediates/**/*.apk
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
       - debug.keystore
-      - android/key.properties
-      - android/app/build.gradle
