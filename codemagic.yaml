@@ -53,6 +53,9 @@ workflows:
           npm install @tailwindcss/postcss postcss autoprefixer
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
+          echo "=== Removing old tailwindcss if present ==="
+          npm uninstall tailwindcss || echo "tailwindcss not installed"
+          
           echo "=== Installing missing Replit plugins as stubs ==="
           npm install --save-dev @replit/vite-plugin-runtime-error-modal @replit/vite-plugin-cartographer || echo "Replit plugins not available, will use clean vite config"
           
@@ -81,7 +84,10 @@ workflows:
           echo "=== New vite.config.ts content ==="
           cat vite.config.ts
           
-          echo "=== Creating PostCSS configuration (ES module) ==="
+          echo "=== Removing conflicting PostCSS configs ==="
+          rm -f postcss.config.js postcss.config.ts tailwind.config.js tailwind.config.ts
+          
+          echo "=== Creating clean PostCSS configuration ==="
           cat > postcss.config.mjs << 'EOF'
           export default {
             plugins: {
@@ -91,7 +97,7 @@ workflows:
           }
           EOF
           
-          echo "=== Creating Tailwind config (ES module) ==="
+          echo "=== Creating clean Tailwind config ==="
           cat > tailwind.config.mjs << 'EOF'
           export default {
             content: [
@@ -105,8 +111,12 @@ workflows:
           }
           EOF
           
-          echo "=== Configuration files created ==="
+          echo "=== Verifying clean configuration ==="
           ls -la *.config.* *.mjs
+          echo "=== PostCSS config content ==="
+          cat postcss.config.mjs
+          echo "=== Tailwind config content ==="
+          cat tailwind.config.mjs
           
           echo "=== Building web assets ==="
           npm run build || npx vite build
