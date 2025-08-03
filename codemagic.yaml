@@ -304,6 +304,79 @@ workflows:
           }
           EOF
           
+          echo "=== Creating all missing pages ==="
+          cat > src/pages/achievements.tsx << 'EOF'
+          import * as React from "react"
+          export default function AchievementsPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Achievements</h1>
+                <p>Your collective purchasing achievements</p>
+              </div>
+            )
+          }
+          EOF
+          
+          cat > src/pages/business-dashboard.tsx << 'EOF'
+          import * as React from "react"
+          export default function BusinessDashboardPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Business Dashboard</h1>
+                <p>B2B collective purchasing dashboard</p>
+              </div>
+            )
+          }
+          EOF
+          
+          cat > src/pages/consumer-dashboard.tsx << 'EOF'
+          import * as React from "react"
+          export default function ConsumerDashboardPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Consumer Dashboard</h1>
+                <p>Your personal purchasing dashboard</p>
+              </div>
+            )
+          }
+          EOF
+          
+          cat > src/pages/profile.tsx << 'EOF'
+          import * as React from "react"
+          export default function ProfilePage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Profile</h1>
+                <p>Manage your account settings</p>
+              </div>
+            )
+          }
+          EOF
+          
+          cat > src/pages/categories.tsx << 'EOF'
+          import * as React from "react"
+          export default function CategoriesPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Categories</h1>
+                <p>Browse product categories</p>
+              </div>
+            )
+          }
+          EOF
+          
+          cat > src/pages/my-plans.tsx << 'EOF'
+          import * as React from "react"
+          export default function MyPlansPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">My Plans</h1>
+                <p>Your purchase plans and intentions</p>
+              </div>
+            )
+          }
+          EOF
+          
           echo "=== Creating additional UI components ==="
           cat > src/components/ui/card.tsx << 'EOF'
           import * as React from "react"
@@ -355,7 +428,7 @@ workflows:
           export const FormMessage = ({ children }: { children: React.ReactNode }) => <p className="text-sm text-destructive">{children}</p>
           EOF
           
-          echo "=== Removing CSS border-border rule causing issues ==="
+          echo "=== Creating minimal CSS without problematic classes ==="
           cat > src/index.css << 'EOF'
           @tailwind base;
           @tailwind components;
@@ -408,10 +481,9 @@ workflows:
             }
           }
           
-          @layer base {
-            body {
-              @apply bg-background text-foreground;
-            }
+          body {
+            background-color: white;
+            color: rgb(9 9 11);
           }
           EOF
           
