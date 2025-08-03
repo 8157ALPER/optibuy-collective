@@ -39,8 +39,65 @@ workflows:
             mv "$file" src/components/
           done
           
+          echo "=== Creating required lib files ==="
+          cat > src/lib/queryClient.ts << 'EOF'
+          import { QueryClient } from '@tanstack/react-query'
+          
+          export const queryClient = new QueryClient({
+            defaultOptions: {
+              queries: {
+                staleTime: 1000 * 60 * 5, // 5 minutes
+                retry: 1,
+              },
+            },
+          })
+          
+          export async function apiRequest(url: string, options: RequestInit = {}) {
+            const response = await fetch(url, {
+              headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+              },
+              ...options,
+            })
+            
+            if (!response.ok) {
+              throw new Error(`API request failed: ${response.statusText}`)
+            }
+            
+            return response.json()
+          }
+          EOF
+          
+          cat > src/lib/utils.ts << 'EOF'
+          import { type ClassValue, clsx } from "clsx"
+          import { twMerge } from "tailwind-merge"
+          
+          export function cn(...inputs: ClassValue[]) {
+            return twMerge(clsx(inputs))
+          }
+          EOF
+          
+          echo "=== Creating basic index.html ==="
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>OptiBuy - Collective Purchase Platform</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.tsx"></script>
+            </body>
+          </html>
+          EOF
+          
           echo "=== Final project structure ==="
           find src -type f | head -20
+          ls -la index.html
 
       - name: Install dependencies and build web assets
         script: |
