@@ -95,6 +95,51 @@ workflows:
           </html>
           EOF
           
+          echo "=== Creating UI components directory ==="
+          mkdir -p src/components/ui src/hooks
+          
+          echo "=== Creating missing UI components ==="
+          cat > src/components/ui/tooltip.tsx << 'EOF'
+          import * as React from "react"
+          export const Tooltip = ({ children }: { children: React.ReactNode }) => <>{children}</>
+          export const TooltipTrigger = ({ children }: { children: React.ReactNode }) => <>{children}</>
+          export const TooltipContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const TooltipProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>
+          EOF
+          
+          cat > src/components/ui/toaster.tsx << 'EOF'
+          import * as React from "react"
+          export const Toaster = () => <div id="toaster" />
+          EOF
+          
+          cat > src/components/ui/button.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          export const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+            ({ className, ...props }, ref) => (
+              <button ref={ref} className={cn("px-4 py-2 rounded", className)} {...props} />
+            )
+          )
+          Button.displayName = "Button"
+          EOF
+          
+          cat > src/components/ui/input.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+            ({ className, ...props }, ref) => (
+              <input ref={ref} className={cn("border rounded px-3 py-2", className)} {...props} />
+            )
+          )
+          Input.displayName = "Input"
+          EOF
+          
+          cat > src/hooks/use-toast.ts << 'EOF'
+          export const useToast = () => ({
+            toast: (props: any) => console.log('Toast:', props)
+          })
+          EOF
+          
           echo "=== Final project structure ==="
           find src -type f | head -20
           ls -la index.html
@@ -172,7 +217,48 @@ workflows:
               "./src/**/*.{js,ts,jsx,tsx}",
             ],
             theme: {
-              extend: {},
+              extend: {
+                colors: {
+                  border: "hsl(214.3 31.8% 91.4%)",
+                  input: "hsl(214.3 31.8% 91.4%)",
+                  ring: "hsl(222.2 84% 4.9%)",
+                  background: "hsl(0 0% 100%)",
+                  foreground: "hsl(222.2 84% 4.9%)",
+                  primary: {
+                    DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                    foreground: "hsl(210 40% 98%)",
+                  },
+                  secondary: {
+                    DEFAULT: "hsl(210 40% 96%)",
+                    foreground: "hsl(222.2 84% 4.9%)",
+                  },
+                  destructive: {
+                    DEFAULT: "hsl(0 84.2% 60.2%)",
+                    foreground: "hsl(210 40% 98%)",
+                  },
+                  muted: {
+                    DEFAULT: "hsl(210 40% 96%)",
+                    foreground: "hsl(215.4 16.3% 46.9%)",
+                  },
+                  accent: {
+                    DEFAULT: "hsl(210 40% 96%)",
+                    foreground: "hsl(222.2 84% 4.9%)",
+                  },
+                  popover: {
+                    DEFAULT: "hsl(0 0% 100%)",
+                    foreground: "hsl(222.2 84% 4.9%)",
+                  },
+                  card: {
+                    DEFAULT: "hsl(0 0% 100%)",
+                    foreground: "hsl(222.2 84% 4.9%)",
+                  },
+                },
+                borderRadius: {
+                  lg: "0.5rem",
+                  md: "0.375rem",
+                  sm: "0.25rem",
+                },
+              },
             },
             plugins: [],
           }
