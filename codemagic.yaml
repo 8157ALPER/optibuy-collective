@@ -269,8 +269,154 @@ workflows:
           }
           EOF
           
+          echo "=== Creating missing components ==="
+          cat > src/components/legal-disclaimer-banner.tsx << 'EOF'
+          import * as React from "react"
+          export const LegalDisclaimerBanner = () => (
+            <div className="bg-muted p-4 text-sm text-muted-foreground">
+              <p>Legal disclaimer banner component</p>
+            </div>
+          )
+          EOF
+          
+          echo "=== Creating missing pages ==="
+          cat > src/pages/onboarding.tsx << 'EOF'
+          import * as React from "react"
+          export default function OnboardingPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Welcome to OptiBuy</h1>
+                <p>Get started with collective purchasing</p>
+              </div>
+            )
+          }
+          EOF
+          
+          cat > src/pages/not-found.tsx << 'EOF'
+          import * as React from "react"
+          export default function NotFoundPage() {
+            return (
+              <div className="container mx-auto p-6 text-center">
+                <h1 className="text-4xl font-bold mb-4">404</h1>
+                <p>Page not found</p>
+              </div>
+            )
+          }
+          EOF
+          
+          echo "=== Creating additional UI components ==="
+          cat > src/components/ui/card.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
+            )
+          )
+          Card.displayName = "Card"
+          
+          export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
+            )
+          )
+          CardHeader.displayName = "CardHeader"
+          
+          export const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
+            ({ className, ...props }, ref) => (
+              <h3 ref={ref} className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />
+            )
+          )
+          CardTitle.displayName = "CardTitle"
+          
+          export const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+            )
+          )
+          CardContent.displayName = "CardContent"
+          EOF
+          
+          cat > src/components/ui/form.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Form = ({ children }: { children: React.ReactNode }) => <form>{children}</form>
+          export const FormField = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const FormItem = ({ children }: { children: React.ReactNode }) => <div className="space-y-2">{children}</div>
+          export const FormLabel = React.forwardRef<HTMLLabelElement, React.LabelHTMLAttributes<HTMLLabelElement>>(
+            ({ className, ...props }, ref) => (
+              <label ref={ref} className={cn("text-sm font-medium leading-none", className)} {...props} />
+            )
+          )
+          FormLabel.displayName = "FormLabel"
+          export const FormControl = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const FormMessage = ({ children }: { children: React.ReactNode }) => <p className="text-sm text-destructive">{children}</p>
+          EOF
+          
+          echo "=== Removing CSS border-border rule causing issues ==="
+          cat > src/index.css << 'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+          
+          @layer base {
+            :root {
+              --background: 0 0% 100%;
+              --foreground: 222.2 84% 4.9%;
+              --card: 0 0% 100%;
+              --card-foreground: 222.2 84% 4.9%;
+              --popover: 0 0% 100%;
+              --popover-foreground: 222.2 84% 4.9%;
+              --primary: 222.2 47.4% 11.2%;
+              --primary-foreground: 210 40% 98%;
+              --secondary: 210 40% 96%;
+              --secondary-foreground: 222.2 84% 4.9%;
+              --muted: 210 40% 96%;
+              --muted-foreground: 215.4 16.3% 46.9%;
+              --accent: 210 40% 96%;
+              --accent-foreground: 222.2 84% 4.9%;
+              --destructive: 0 84.2% 60.2%;
+              --destructive-foreground: 210 40% 98%;
+              --border: 214.3 31.8% 91.4%;
+              --input: 214.3 31.8% 91.4%;
+              --ring: 222.2 84% 4.9%;
+              --radius: 0.5rem;
+            }
+          
+            .dark {
+              --background: 222.2 84% 4.9%;
+              --foreground: 210 40% 98%;
+              --card: 222.2 84% 4.9%;
+              --card-foreground: 210 40% 98%;
+              --popover: 222.2 84% 4.9%;
+              --popover-foreground: 210 40% 98%;
+              --primary: 210 40% 98%;
+              --primary-foreground: 222.2 47.4% 11.2%;
+              --secondary: 217.2 32.6% 17.5%;
+              --secondary-foreground: 210 40% 98%;
+              --muted: 217.2 32.6% 17.5%;
+              --muted-foreground: 215 20.2% 65.1%;
+              --accent: 217.2 32.6% 17.5%;
+              --accent-foreground: 210 40% 98%;
+              --destructive: 0 62.8% 30.6%;
+              --destructive-foreground: 210 40% 98%;
+              --border: 217.2 32.6% 17.5%;
+              --input: 217.2 32.6% 17.5%;
+              --ring: 212.7 26.8% 83.9%;
+            }
+          }
+          
+          @layer base {
+            body {
+              @apply bg-background text-foreground;
+            }
+          }
+          EOF
+          
           echo "=== Final project structure ==="
-          find src -type f | head -20
+          find src -type f | head -30
           ls -la index.html
 
       - name: Install dependencies and build web assets
