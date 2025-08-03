@@ -81,9 +81,9 @@ workflows:
           echo "=== New vite.config.ts content ==="
           cat vite.config.ts
           
-          echo "=== Creating PostCSS configuration ==="
-          cat > postcss.config.js << 'EOF'
-          module.exports = {
+          echo "=== Creating PostCSS configuration (ES module) ==="
+          cat > postcss.config.mjs << 'EOF'
+          export default {
             plugins: {
               '@tailwindcss/postcss': {},
               autoprefixer: {},
@@ -91,9 +91,9 @@ workflows:
           }
           EOF
           
-          echo "=== Creating Tailwind config ==="
-          cat > tailwind.config.js << 'EOF'
-          module.exports = {
+          echo "=== Creating Tailwind config (ES module) ==="
+          cat > tailwind.config.mjs << 'EOF'
+          export default {
             content: [
               "./index.html",
               "./src/**/*.{js,ts,jsx,tsx}",
@@ -106,7 +106,7 @@ workflows:
           EOF
           
           echo "=== Configuration files created ==="
-          ls -la *.config.js *.config.ts
+          ls -la *.config.* *.mjs
           
           echo "=== Building web assets ==="
           npm run build || npx vite build
