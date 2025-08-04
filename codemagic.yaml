@@ -1203,9 +1203,25 @@ workflows:
           ./gradlew assembleDebug --stacktrace
           ls -la app/build/outputs/apk/debug/
           
+          echo "=== Listing available Gradle tasks ==="
+          ./gradlew tasks --all | grep -i bundle
+          
           echo "=== Building AAB with detailed logging ==="
           ./gradlew bundleRelease --stacktrace --info --debug 2>&1 | tee ../build-log.txt
           BUILD_EXIT_CODE=$?
+          
+          echo "=== If release build failed, try debug bundle ==="
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "=== Attempting debug bundle build ==="
+            ./gradlew bundleDebug --stacktrace --info 2>&1 | tee -a ../build-log.txt
+            DEBUG_EXIT_CODE=$?
+            echo "=== Debug bundle exit code: $DEBUG_EXIT_CODE ==="
+            
+            if [ $DEBUG_EXIT_CODE -eq 0 ]; then
+              echo "=== Debug bundle successful, using debug AAB ==="
+              find . -name "*debug*.aab" -exec ls -lh {} \;
+            fi
+          fi
           
           echo "=== Build exit code: $BUILD_EXIT_CODE ==="
           
@@ -1226,21 +1242,49 @@ workflows:
           find app/build/outputs -type f -name "*.aab" -o -name "*.apk" -exec ls -lah {} \;
           
           echo "=== Copying AAB to root for artifact collection ==="
+          AAB_FOUND=false
+          
+          # Try release AAB first
           if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
             cp app/build/outputs/bundle/release/app-release.aab ../optibuy-release.aab
             ls -lah ../optibuy-release.aab
-            echo "=== AAB copied successfully ==="
-          else
-            echo "=== AAB file not found for copying ==="
-            echo "=== Directory structure debugging ==="
-            find app/build -type f | head -20
+            echo "=== Release AAB copied successfully ==="
+            AAB_FOUND=true
+          fi
+          
+          # Try debug AAB if release failed
+          if [ "$AAB_FOUND" = false ] && [ -f "app/build/outputs/bundle/debug/app-debug.aab" ]; then
+            cp app/build/outputs/bundle/debug/app-debug.aab ../optibuy-debug.aab
+            ls -lah ../optibuy-debug.aab
+            echo "=== Debug AAB copied successfully ==="
+            AAB_FOUND=true
+          fi
+          
+          # Emergency: try to build simple APK instead
+          if [ "$AAB_FOUND" = false ]; then
+            echo "=== No AAB found, building emergency APK ==="
+            ./gradlew assembleRelease --stacktrace 2>&1 | tee -a ../build-log.txt
+            
+            if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+              cp app/build/outputs/apk/release/app-release.apk ../optibuy-release.apk
+              ls -lah ../optibuy-release.apk
+              echo "=== Emergency APK created ==="
+            fi
+          fi
+          
+          if [ "$AAB_FOUND" = false ]; then
+            echo "=== Complete build failure - directory structure debugging ==="
+            find app/build -type f -name "*.aab" -o -name "*.apk" | head -20
+            echo "=== End debugging ==="
           fi
 
     artifacts:
       - optibuy-release.aab
+      - optibuy-debug.aab
+      - optibuy-release.apk
       - android/app/build/outputs/bundle/release/app-release.aab
+      - android/app/build/outputs/bundle/debug/app-debug.aab
+      - android/app/build/outputs/apk/release/app-release.apk
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
-      - android/**/*.aab
-      - android/**/*.apk
       - build-log.txt
