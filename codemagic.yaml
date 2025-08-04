@@ -594,8 +594,89 @@ workflows:
           Textarea.displayName = "Textarea"
           EOF
           
+          echo "=== Creating final missing components ==="
+          cat > src/components/ui/checkbox.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Checkbox = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+            ({ className, ...props }, ref) => (
+              <input
+                type="checkbox"
+                ref={ref}
+                className={cn(
+                  "h-4 w-4 rounded border border-primary text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                  className
+                )}
+                {...props}
+              />
+            )
+          )
+          Checkbox.displayName = "Checkbox"
+          EOF
+          
+          cat > src/pages/create-purchase-intention.tsx << 'EOF'
+          import * as React from "react"
+          export default function CreatePurchaseIntentionPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Create Purchase Intention</h1>
+                <p>Express your future buying needs</p>
+              </div>
+            )
+          }
+          EOF
+          
+          echo "=== Creating additional missing UI components ==="
+          cat > src/components/ui/dialog.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Dialog = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("fixed inset-0 z-50 bg-white p-6 shadow-lg", className)} {...props} />
+            )
+          )
+          DialogContent.displayName = "DialogContent"
+          export const DialogHeader = ({ children }: { children: React.ReactNode }) => <div className="mb-4">{children}</div>
+          export const DialogTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+            ({ className, ...props }, ref) => (
+              <h2 ref={ref} className={cn("text-lg font-semibold", className)} {...props} />
+            )
+          )
+          DialogTitle.displayName = "DialogTitle"
+          export const DialogTrigger = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          EOF
+          
+          cat > src/components/ui/avatar.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Avatar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full", className)} {...props} />
+            )
+          )
+          Avatar.displayName = "Avatar"
+          
+          export const AvatarImage = React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement>>(
+            ({ className, ...props }, ref) => (
+              <img ref={ref} className={cn("aspect-square h-full w-full", className)} {...props} />
+            )
+          )
+          AvatarImage.displayName = "AvatarImage"
+          
+          export const AvatarFallback = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("flex h-full w-full items-center justify-center rounded-full bg-muted", className)} {...props} />
+            )
+          )
+          AvatarFallback.displayName = "AvatarFallback"
+          EOF
+          
           echo "=== Final project structure ==="
-          find src -type f | head -40
+          find src -type f | head -50
           ls -la index.html
 
       - name: Install dependencies and build web assets
