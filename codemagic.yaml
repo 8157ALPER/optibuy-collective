@@ -1035,10 +1035,24 @@ workflows:
           npm run build || npx vite build
           
           echo "=== Verifying build output ==="
-          ls -la dist/ 2>/dev/null || echo "No dist/ in client directory (using --outDir ../dist/public)"
-          ls -la ../dist/public/ 2>/dev/null || echo "Build output location not found"
+          ls -la dist/ 2>/dev/null || echo "No dist/ in client directory"
+          ls -la ../dist/public/ 2>/dev/null || echo "No ../dist/public directory"
           
-          echo "=== Build completed successfully ==="
+          echo "=== Ensuring dist directory exists for Capacitor ==="
+          if [ ! -d "dist" ]; then
+            if [ -d "../dist/public" ]; then
+              echo "Copying web assets from ../dist/public to ./dist"
+              cp -r ../dist/public/* ./dist/ 2>/dev/null || mkdir -p dist && cp -r ../dist/public/* ./dist/
+            else
+              echo "Creating dist directory and building directly"
+              mkdir -p dist
+              npx vite build --outDir=dist
+            fi
+          fi
+          
+          echo "=== Final verification ==="
+          ls -la dist/
+          ls -la dist/index.html || echo "ERROR: index.html not found in dist/"
 
       - name: Create debug keystore
         script: |
@@ -1048,10 +1062,18 @@ workflows:
 
       - name: Install Capacitor and add Android platform
         script: |
-          echo "=== Capacitor already installed in previous step ==="
+          echo "=== Removing existing Capacitor config ==="
+          rm -f capacitor.config.ts capacitor.config.js capacitor.config.json
+          
+          echo "=== Verifying dist directory exists ==="
+          ls -la dist/ || echo "dist directory missing"
+          ls -la dist/index.html || echo "index.html missing in dist"
           
           echo "=== Initializing Capacitor ==="
           npx cap init "OptiBuy" "com.optibuy.collective" --web-dir=dist
+          
+          echo "=== Verifying Capacitor config created ==="
+          cat capacitor.config.json || cat capacitor.config.ts || echo "No config file created"
           
           echo "=== Adding Android platform ==="
           npx cap add android
