@@ -1,6 +1,9 @@
+# Minimal Working React-to-AAB Build
+# Simplified approach for guaranteed AAB generation
+
 workflows:
-  android-workflow:
-    name: OptiBuy Android AAB Build
+  minimal-aab:
+    name: Minimal React AAB Build
     max_build_duration: 60
     instance_type: mac_mini_m1
     
@@ -9,10 +12,112 @@ workflows:
         - keystore_reference
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
-        
+    
     scripts:
-      - name: Set up key.properties
+      - name: Setup and Create React App
         script: |
+          echo "=== Creating minimal React project ==="
+          
+          # Create package.json
+          cat > package.json << 'EOF'
+          {
+            "name": "optibuy",
+            "version": "1.0.0",
+            "scripts": {
+              "build": "vite build"
+            },
+            "dependencies": {
+              "react": "^18.2.0",
+              "react-dom": "^18.2.0"
+            },
+            "devDependencies": {
+              "vite": "^5.0.0",
+              "@vitejs/plugin-react": "^4.0.0"
+            }
+          }
+          EOF
+          
+          # Create directories
+          mkdir -p src public
+          
+          # Create index.html
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>OptiBuy</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.jsx"></script>
+            </body>
+          </html>
+          EOF
+          
+          # Create App.jsx
+          cat > src/App.jsx << 'EOF'
+          function App() {
+            return (
+              <div style={{padding: '20px', textAlign: 'center'}}>
+                <h1>OptiBuy - Collective Purchasing</h1>
+                <p>Discover invisible buying neighbors for bulk discounts</p>
+                <button onClick={() => alert('Welcome to OptiBuy!')}>
+                  Get Started
+                </button>
+              </div>
+            )
+          }
+          export default App
+          EOF
+          
+          # Create main.jsx
+          cat > src/main.jsx << 'EOF'
+          import React from 'react'
+          import ReactDOM from 'react-dom/client'
+          import App from './App'
+          
+          ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+          EOF
+          
+          # Create vite.config.js
+          cat > vite.config.js << 'EOF'
+          import { defineConfig } from 'vite'
+          import react from '@vitejs/plugin-react'
+          
+          export default defineConfig({
+            plugins: [react()],
+            build: {
+              outDir: 'dist'
+            }
+          })
+          EOF
+
+      - name: Build and Setup Capacitor
+        script: |
+          echo "=== Installing dependencies ==="
+          npm install
+          
+          echo "=== Building React app ==="
+          npm run build
+          ls -la dist/
+          
+          echo "=== Installing Capacitor ==="
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          
+          echo "=== Initialize Capacitor ==="
+          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
+          
+          echo "=== Add Android platform ==="
+          npx cap add android
+          
+          echo "=== Sync web assets ==="
+          npx cap sync android
+
+      - name: Set up signing
+        script: |
+          echo "=== Setting up keystore ==="
           echo $CM_KEYSTORE | base64 --decode > $CM_KEYSTORE_PATH
           cat >> "$CM_BUILD_DIR/android/key.properties" <<EOF
           storePassword=$CM_KEYSTORE_PASSWORD
@@ -21,14 +126,24 @@ workflows:
           storeFile=$CM_KEYSTORE_PATH
           EOF
 
-      - name: Set up local.properties
+      - name: Set up local properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
 
-      - name: Build the app
+      - name: Build AAB
         script: |
           cd android
+          chmod +x gradlew
+          ./gradlew clean
           ./gradlew bundleRelease
+          
+          echo "=== Check outputs ==="
+          find . -name "*.aab" -exec ls -lh {} \;
+          
+          echo "=== Copy AAB ==="
+          cp app/build/outputs/bundle/release/app-release.aab ../optibuy.aab
+          ls -lh ../optibuy.aab
 
     artifacts:
-      - android/app/build/outputs/**/*.aab
+      - optibuy.aab
+      - android/app/build/outputs/bundle/release/app-release.aab
