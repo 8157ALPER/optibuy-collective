@@ -32,7 +32,11 @@ workflows:
             },
             "devDependencies": {
               "vite": "^5.0.0",
-              "@vitejs/plugin-react": "^4.0.0"
+              "@vitejs/plugin-react": "^4.0.0",
+              "typescript": "^5.0.0",
+              "tailwindcss": "^3.3.0",
+              "autoprefixer": "^10.4.0",
+              "postcss": "^8.4.0"
             }
           }
           EOF
@@ -56,14 +60,26 @@ workflows:
           </html>
           EOF
           
+          # Create index.css with Tailwind
+          cat > src/index.css << 'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+          EOF
+          
           # Create App.jsx
           cat > src/App.jsx << 'EOF'
+          import './index.css'
+          
           function App() {
             return (
-              <div style={{padding: '20px', textAlign: 'center'}}>
-                <h1>OptiBuy - Collective Purchasing</h1>
-                <p>Discover invisible buying neighbors for bulk discounts</p>
-                <button onClick={() => alert('Welcome to OptiBuy!')}>
+              <div className="p-5 text-center">
+                <h1 className="text-2xl font-bold mb-4">OptiBuy - Collective Purchasing</h1>
+                <p className="mb-4">Discover invisible buying neighbors for bulk discounts</p>
+                <button 
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  onClick={() => alert('Welcome to OptiBuy!')}
+                >
                   Get Started
                 </button>
               </div>
@@ -92,6 +108,56 @@ workflows:
               outDir: 'dist'
             }
           })
+          EOF
+          
+          # Create postcss.config.js
+          cat > postcss.config.js << 'EOF'
+          export default {
+            plugins: {
+              tailwindcss: {},
+              autoprefixer: {},
+            },
+          }
+          EOF
+          
+          # Create tailwind.config.js
+          cat > tailwind.config.js << 'EOF'
+          /** @type {import('tailwindcss').Config} */
+          export default {
+            content: [
+              "./index.html",
+              "./src/**/*.{js,ts,jsx,tsx}",
+            ],
+            theme: {
+              extend: {},
+            },
+            plugins: [],
+          }
+          EOF
+          
+          # Create tsconfig.json for Capacitor
+          cat > tsconfig.json << 'EOF'
+          {
+            "compilerOptions": {
+              "target": "ES2020",
+              "useDefineForClassFields": true,
+              "lib": ["ES2020", "DOM", "DOM.Iterable"],
+              "module": "ESNext",
+              "skipLibCheck": true,
+              "moduleResolution": "bundler",
+              "allowImportingTsExtensions": true,
+              "resolveJsonModule": true,
+              "isolatedModules": true,
+              "noEmit": true,
+              "jsx": "react-jsx",
+              "strict": true,
+              "noUnusedLocals": true,
+              "noUnusedParameters": true,
+              "noFallthroughCasesInSwitch": true
+            },
+            "include": ["src"],
+            "references": [{ "path": "./tsconfig.node.json" }]
+          }
           EOF
 
       - name: Build and Setup Capacitor
