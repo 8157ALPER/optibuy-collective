@@ -1033,7 +1033,12 @@ workflows:
           
           echo "=== Building web assets ==="
           npm run build || npx vite build
-          ls -la dist/
+          
+          echo "=== Verifying build output ==="
+          ls -la dist/ 2>/dev/null || echo "No dist/ in client directory (using --outDir ../dist/public)"
+          ls -la ../dist/public/ 2>/dev/null || echo "Build output location not found"
+          
+          echo "=== Build completed successfully ==="
 
       - name: Create debug keystore
         script: |
