@@ -1099,29 +1099,49 @@ workflows:
 
       - name: Build Android AAB
         script: |
+          echo "=== Verifying Android project structure ==="
+          ls -la android/ || echo "No android directory found"
+          ls -la android/app/ || echo "No android/app directory found"
+          
+          echo "=== Checking web assets were synced ==="
+          ls -la android/app/src/main/assets/public/ || echo "No synced web assets found"
+          
           cd android
           echo "=== Setting Gradle permissions ==="
           chmod +x gradlew
           
+          echo "=== Gradle wrapper version ==="
+          ./gradlew --version
+          
           echo "=== Checking current build.gradle ==="
-          cat app/build.gradle
+          cat app/build.gradle | head -50
+          
+          echo "=== Verifying keystore setup ==="
+          ls -la debug.keystore key.properties
+          cat key.properties
           
           echo "=== Clean build ==="
-          ./gradlew clean
+          ./gradlew clean --stacktrace
           
-          echo "=== Building AAB ==="
-          ./gradlew bundleRelease --stacktrace --info
+          echo "=== Building AAB with full logs ==="
+          ./gradlew bundleRelease --stacktrace --info --debug 2>&1 | tee ../build-log.txt
           
-          echo "=== Alternative: Building APK ==="
-          ./gradlew assembleRelease --stacktrace --info
+          echo "=== Build exit code: $? ==="
           
           echo "=== Checking build outputs ==="
-          find app/build -name "*.aab" -o -name "*.apk" -exec ls -lh {} \;
+          find . -name "*.aab" -o -name "*.apk" -exec ls -lh {} \;
           
-          echo "=== Build directory structure ==="
-          ls -la app/build/outputs/
+          echo "=== Full build directory structure ==="
+          find app/build -type f -name "*.aab" -o -name "*.apk" | head -10
+          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs directory"
+          ls -la app/build/outputs/bundle/ 2>/dev/null || echo "No bundle directory"
+          ls -la app/build/outputs/bundle/release/ 2>/dev/null || echo "No release bundle directory"
 
     artifacts:
       - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
+      - android/**/*.aab
+      - android/**/*.apk
       - debug.keystore
+      - android/app/build/reports/**/*
+      - build-log.txt
