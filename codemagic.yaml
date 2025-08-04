@@ -1094,8 +1094,84 @@ workflows:
           storeFile=debug.keystore
           EOF
           
-          echo "=== Verifying files ==="
+          echo "=== Modifying build.gradle for proper signing ==="
+          cd android
+          
+          # Backup original build.gradle
+          cp app/build.gradle app/build.gradle.backup
+          
+          # Add signing configuration to build.gradle
+          cat > app/build.gradle << 'EOF'
+          apply plugin: 'com.android.application'
+
+          android {
+              namespace "com.optibuy.collective"
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.optibuy.collective"
+                  minSdk 22
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+              }
+
+              signingConfigs {
+                  release {
+                      keyAlias 'optibuy'
+                      keyPassword 'android'
+                      storeFile file('debug.keystore')
+                      storePassword 'android'
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                      signingConfig signingConfigs.release
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+          }
+
+          repositories {
+              google()
+              mavenCentral()
+          }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.8.0'
+              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+              implementation project(':capacitor-android')
+              testImplementation 'junit:junit:4.13.2'
+              androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+              androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+          }
+
+          apply from: 'capacitor.build.gradle'
+
+          try {
+              def servicesJSON = file('google-services.json')
+              if (servicesJSON.text) {
+                  apply plugin: 'com.google.gms.google-services'
+              }
+          } catch(Exception e) {
+              logger.info("google-services.json not found, google-services plugin not applied. $e")
+          }
+          EOF
+          
+          cd ..
+          echo "=== Verifying signing configuration ==="
           ls -la android/debug.keystore android/key.properties
+          echo "=== build.gradle signing configuration ==="
+          grep -A 10 "signingConfigs" android/app/build.gradle
 
       - name: Build Android AAB
         script: |
@@ -1123,8 +1199,12 @@ workflows:
           echo "=== Clean build ==="
           ./gradlew clean --stacktrace
           
+          echo "=== Testing debug build first ==="
+          ./gradlew assembleDebug --stacktrace
+          ls -la app/build/outputs/apk/debug/
+          
           echo "=== Building AAB with detailed logging ==="
-          ./gradlew bundleRelease --stacktrace --info 2>&1 | tee ../build-log.txt
+          ./gradlew bundleRelease --stacktrace --info --debug 2>&1 | tee ../build-log.txt
           BUILD_EXIT_CODE=$?
           
           echo "=== Build exit code: $BUILD_EXIT_CODE ==="
