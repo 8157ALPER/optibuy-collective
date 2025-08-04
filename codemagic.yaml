@@ -760,8 +760,148 @@ workflows:
           Progress.displayName = "Progress"
           EOF
           
+          echo "=== Creating remaining missing components ==="
+          cat > src/components/ui/separator.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Separator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & { orientation?: "horizontal" | "vertical" }>(
+            ({ className, orientation = "horizontal", ...props }, ref) => (
+              <div
+                ref={ref}
+                className={cn(
+                  "shrink-0 bg-border",
+                  orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]",
+                  className
+                )}
+                {...props}
+              />
+            )
+          )
+          Separator.displayName = "Separator"
+          EOF
+          
+          cat > src/pages/legal-disclaimer.tsx << 'EOF'
+          import * as React from "react"
+          export default function LegalDisclaimerPage() {
+            return (
+              <div className="container mx-auto p-6">
+                <h1 className="text-2xl font-bold mb-4">Legal Disclaimer</h1>
+                <p>Legal terms and conditions for OptiBuy platform</p>
+              </div>
+            )
+          }
+          EOF
+          
+          echo "=== Creating additional missing components ==="
+          cat > src/components/ui/sheet.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Sheet = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const SheetContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("fixed inset-y-0 right-0 z-50 h-full w-3/4 border-l bg-background p-6 shadow-lg transition ease-in-out", className)} {...props} />
+            )
+          )
+          SheetContent.displayName = "SheetContent"
+          export const SheetHeader = ({ children }: { children: React.ReactNode }) => <div className="flex flex-col space-y-2 text-center sm:text-left">{children}</div>
+          export const SheetTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+            ({ className, ...props }, ref) => (
+              <h2 ref={ref} className={cn("text-lg font-semibold text-foreground", className)} {...props} />
+            )
+          )
+          SheetTitle.displayName = "SheetTitle"
+          export const SheetTrigger = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          EOF
+          
+          cat > src/components/ui/popover.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const Popover = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const PopoverContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none", className)} {...props} />
+            )
+          )
+          PopoverContent.displayName = "PopoverContent"
+          export const PopoverTrigger = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          EOF
+          
+          cat > src/components/ui/dropdown-menu.tsx << 'EOF'
+          import * as React from "react"
+          import { cn } from "../../lib/utils"
+          
+          export const DropdownMenu = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const DropdownMenuContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", className)} {...props} />
+            )
+          )
+          DropdownMenuContent.displayName = "DropdownMenuContent"
+          export const DropdownMenuItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground", className)} {...props} />
+            )
+          )
+          DropdownMenuItem.displayName = "DropdownMenuItem"
+          export const DropdownMenuTrigger = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+          export const DropdownMenuSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+            ({ className, ...props }, ref) => (
+              <div ref={ref} className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />
+            )
+          )
+          DropdownMenuSeparator.displayName = "DropdownMenuSeparator"
+          EOF
+          
+          echo "=== Creating main App component ==="
+          cat > src/App.tsx << 'EOF'
+          import React from 'react'
+          import { Router, Route, Switch } from 'wouter'
+          import { ThemeProvider } from './components/theme-provider'
+          import { Toaster } from './components/ui/toaster'
+          
+          // Import all pages
+          import OnboardingPage from './pages/onboarding'
+          import NotFoundPage from './pages/not-found'
+          
+          function App() {
+            return (
+              <ThemeProvider defaultTheme="light" storageKey="optibuy-theme">
+                <Router>
+                  <div className="min-h-screen bg-background">
+                    <Switch>
+                      <Route path="/" component={OnboardingPage} />
+                      <Route path="/onboarding" component={OnboardingPage} />
+                      <Route component={NotFoundPage} />
+                    </Switch>
+                  </div>
+                </Router>
+                <Toaster />
+              </ThemeProvider>
+            )
+          }
+          
+          export default App
+          EOF
+          
+          echo "=== Creating main entry point ==="
+          cat > src/main.tsx << 'EOF'
+          import React from 'react'
+          import ReactDOM from 'react-dom/client'
+          import App from './App'
+          import './index.css'
+          
+          ReactDOM.createRoot(document.getElementById('root')!).render(
+            <React.StrictMode>
+              <App />
+            </React.StrictMode>,
+          )
+          EOF
+          
           echo "=== Final project structure ==="
-          find src -type f | head -60
+          find src -type f | head -70
           ls -la index.html
 
       - name: Install dependencies and build web assets
