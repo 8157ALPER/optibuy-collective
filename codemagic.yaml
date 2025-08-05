@@ -1,9 +1,9 @@
-# Minimal Working React-to-AAB Build - Google Play App Signing Compatible
-# Uses debug keystore for Google Play Console automatic signing
+# Google Play Console Managed Signing Compatible Build
+# Creates proper upload keystore for Google Play App Signing
 
 workflows:
-  minimal-aab:
-    name: Minimal React AAB Build
+  google-play-managed:
+    name: Google Play Managed Signing AAB
     max_build_duration: 60
     instance_type: mac_mini_m1
     
@@ -237,29 +237,83 @@ workflows:
             grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
           done
 
-      - name: Set up signing for Google Play
+      - name: Create proper upload keystore for Google Play Console
         script: |
           echo "=== Creating upload keystore for Google Play App Signing ==="
-          keytool -genkey -v -keystore upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000 -storepass optibuy2025 -keypass optibuy2025 -dname "CN=OptiBuy Upload Key, OU=OptiBuy, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
           
-          echo "=== Setting up upload key signing ==="
-          cat >> "$CM_BUILD_DIR/android/key.properties" <<EOF
+          # Create upload keystore with proper parameters for Google Play Console
+          keytool -genkey -v \
+            -keystore upload.keystore \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass optibuy2025 \
+            -keypass optibuy2025 \
+            -dname "CN=OptiBuy Upload Key, OU=OptiBuy Mobile, O=OptiBuy Collective, L=Istanbul, ST=Istanbul, C=TR"
+          
+          # Verify keystore
+          keytool -list -v -keystore upload.keystore -storepass optibuy2025
+          
+          echo "=== Generate upload certificate for Google Play Console ==="
+          # Export certificate in PEM format (required for Google Play Console)
+          keytool -export -rfc \
+            -keystore upload.keystore \
+            -alias upload \
+            -file upload_certificate.pem \
+            -storepass optibuy2025
+          
+          echo "Upload certificate generated successfully"
+          ls -la upload_certificate.pem
+          
+          # Show certificate details
+          openssl x509 -in upload_certificate.pem -text -noout | head -20
+
+      - name: Configure Android signing for upload keystore
+        script: |
+          cd android
+          
+          echo "=== Setting up upload key signing configuration ==="
+          
+          # Create key.properties file
+          cat > key.properties << EOF
           storePassword=optibuy2025
           keyPassword=optibuy2025
           keyAlias=upload
-          storeFile=$CM_BUILD_DIR/upload.keystore
+          storeFile=../upload.keystore
           EOF
           
-          echo "=== Generate upload certificate for Google Play ==="
-          keytool -export -rfc -keystore upload.keystore -alias upload -file upload_certificate.pem -storepass optibuy2025
-          echo "Upload certificate generated: upload_certificate.pem"
-          ls -la upload_certificate.pem
+          echo "=== Configure app build.gradle for upload signing ==="
+          # Add signing configuration to app/build.gradle
+          cat >> app/build.gradle << 'EOF'
+
+          android {
+              signingConfigs {
+                  upload {
+                      keyAlias 'upload'
+                      keyPassword 'optibuy2025'
+                      storeFile file('../upload.keystore')
+                      storePassword 'optibuy2025'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.upload
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+          }
+          EOF
+          
+          echo "=== Verify signing configuration ==="
+          grep -A 15 "signingConfigs" app/build.gradle || echo "Signing config added"
 
       - name: Set up local properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
 
-      - name: Build AAB
+      - name: Build signed AAB for Google Play Console
         script: |
           cd android
           
@@ -273,19 +327,45 @@ workflows:
           sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
           cat gradle/wrapper/gradle-wrapper.properties
           
+          echo "=== Clean and build signed AAB ==="
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew bundleRelease
           
-          echo "=== Check outputs ==="
+          echo "=== Building release bundle with upload key ==="
+          ./gradlew bundleRelease --stacktrace
+          
+          echo "=== Verify AAB signature ==="
           find . -name "*.aab" -exec ls -lh {} \;
           
-          echo "=== Copy AAB for Google Play Signing ==="
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-play-signing.aab
-          ls -lh ../optibuy-play-signing.aab
+          # Verify the AAB is properly signed
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            echo "=== AAB file created successfully ==="
+            ls -lh app/build/outputs/bundle/release/app-release.aab
+            
+            # Copy AAB with descriptive name for Google Play Console
+            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-google-play-managed.aab
+            echo "=== Google Play Console ready AAB ==="
+            ls -lh ../optibuy-google-play-managed.aab
+            
+            # File verification
+            file ../optibuy-google-play-managed.aab
+            echo "AAB size: $(du -h ../optibuy-google-play-managed.aab | cut -f1)"
+          else
+            echo "ERROR: AAB file not generated"
+            echo "Build outputs:"
+            find . -name "*.aab" -o -name "*.apk"
+            exit 1
+          fi
 
     artifacts:
-      - optibuy-play-signing.aab
+      - optibuy-google-play-managed.aab
       - upload_certificate.pem
       - upload.keystore
-      - android/app/build/outputs/bundle/release/app-release.aab
+
+    publishing:
+      email:
+        recipients:
+          - your-metealper@gmail.com
+        notify:
+          success: true
+          failure: true
