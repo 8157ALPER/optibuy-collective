@@ -1,5 +1,6 @@
 # Minimal Working React-to-AAB Build - Google Play App Signing Compatible
 # Uses debug keystore for Google Play Console automatic signing
+
 workflows:
   minimal-aab:
     name: Minimal React AAB Build
@@ -106,6 +107,7 @@ workflows:
             color: hsl(var(--foreground));
           }
           EOF
+
       - name: Create React Components and App Structure
         script: |
           echo "=== Creating utility functions ==="
@@ -342,6 +344,7 @@ workflows:
             "references": [{ "path": "./tsconfig.node.json" }]
           }
           EOF
+
       - name: Build and Setup Capacitor
         script: |
           echo "=== Installing dependencies ==="
@@ -365,6 +368,7 @@ workflows:
           # Fix app build.gradle - replace existing compileOptions
           sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
           cat >> android/app/build.gradle << 'EOF'
+
           android {
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -385,6 +389,7 @@ workflows:
           echo "=== Create custom capacitor.config.ts with Java 17 ==="
           cat > capacitor.config.ts << 'EOF'
           import { CapacitorConfig } from '@capacitor/cli';
+
           const config: CapacitorConfig = {
             appId: 'com.optibuy.collective',
             appName: 'OptiBuy',
@@ -399,6 +404,7 @@ workflows:
               }
             }
           };
+
           export default config;
           EOF
           
@@ -411,6 +417,7 @@ workflows:
             echo "--- $file ---"
             grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
           done
+
       - name: Configure debug keystore for Google Play Console
         script: |
           cd android
@@ -437,9 +444,11 @@ workflows:
               }
           }
           EOF
+
       - name: Set up local properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+
       - name: Build AAB
         script: |
           cd android
@@ -468,6 +477,7 @@ workflows:
           cp app/build/outputs/bundle/release/app-release.aab ../optibuy-v1.0.0.aab
           ls -la ../optibuy-v1.0.0.aab
           file ../optibuy-v1.0.0.aab
+
     artifacts:
       - optibuy-v1.0.0.aab
       - android/debug.keystore
