@@ -1,9 +1,9 @@
-# Google Play App Signing Compatible Build
-# Generates AAB for Google Play Console automatic signing
+# Minimal Working React-to-AAB Build - Google Play App Signing Compatible
+# Uses debug keystore for Google Play Console automatic signing
 
 workflows:
-  play-signing-aab:
-    name: OptiBuy Play Signing AAB
+  minimal-aab:
+    name: Minimal React AAB Build
     max_build_duration: 60
     instance_type: mac_mini_m1
     
@@ -12,130 +12,273 @@ workflows:
         - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
-        
+        JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+    
     scripts:
-      - name: Create Project
+      - name: Setup and Create React App
         script: |
-          echo "=== Creating React Native project ==="
-          npx react-native init OptiBuy --template react-native-template-typescript
-          cd OptiBuy
+          echo "=== Creating minimal React project ==="
           
-          # Update app content
-          cat > App.tsx << 'EOF'
-          import React from 'react';
-          import {SafeAreaView, Text, StyleSheet, TouchableOpacity, Alert} from 'react-native';
-
-          function App(): React.JSX.Element {
-            return (
-              <SafeAreaView style={styles.container}>
-                <Text style={styles.title}>OptiBuy</Text>
-                <Text style={styles.subtitle}>Collective Purchasing Platform</Text>
-                <Text style={styles.description}>
-                  Discover invisible buying neighbors for bulk discounts
-                </Text>
-                <TouchableOpacity 
-                  style={styles.button}
-                  onPress={() => Alert.alert('Welcome', 'Welcome to OptiBuy!')}
-                >
-                  <Text style={styles.buttonText}>Get Started</Text>
-                </TouchableOpacity>
-              </SafeAreaView>
-            );
+          # Create package.json
+          cat > package.json << 'EOF'
+          {
+            "name": "optibuy",
+            "version": "1.0.0",
+            "scripts": {
+              "build": "vite build"
+            },
+            "dependencies": {
+              "react": "^18.2.0",
+              "react-dom": "^18.2.0"
+            },
+            "devDependencies": {
+              "vite": "^5.0.0",
+              "@vitejs/plugin-react": "^4.0.0",
+              "typescript": "^5.0.0",
+              "tailwindcss": "^3.3.0",
+              "autoprefixer": "^10.4.0",
+              "postcss": "^8.4.0"
+            }
           }
-
-          const styles = StyleSheet.create({
-            container: {
-              flex: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: '#f5f5f5',
-              padding: 20,
+          EOF
+          
+          # Create directories
+          mkdir -p src public
+          
+          # Create index.html
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>OptiBuy</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.jsx"></script>
+            </body>
+          </html>
+          EOF
+          
+          # Create index.css with Tailwind
+          cat > src/index.css << 'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+          EOF
+          
+          # Create App.jsx
+          cat > src/App.jsx << 'EOF'
+          import './index.css'
+          
+          function App() {
+            return (
+              <div className="p-5 text-center">
+                <h1 className="text-2xl font-bold mb-4">OptiBuy - Collective Purchasing</h1>
+                <p className="mb-4">Discover invisible buying neighbors for bulk discounts</p>
+                <button 
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  onClick={() => alert('Welcome to OptiBuy!')}
+                >
+                  Get Started
+                </button>
+              </div>
+            )
+          }
+          export default App
+          EOF
+          
+          # Create main.jsx
+          cat > src/main.jsx << 'EOF'
+          import React from 'react'
+          import ReactDOM from 'react-dom/client'
+          import App from './App'
+          
+          ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+          EOF
+          
+          # Create vite.config.js
+          cat > vite.config.js << 'EOF'
+          import { defineConfig } from 'vite'
+          import react from '@vitejs/plugin-react'
+          
+          export default defineConfig({
+            plugins: [react()],
+            build: {
+              outDir: 'dist'
+            }
+          })
+          EOF
+          
+          # Create postcss.config.js
+          cat > postcss.config.js << 'EOF'
+          export default {
+            plugins: {
+              tailwindcss: {},
+              autoprefixer: {},
             },
-            title: {
-              fontSize: 32,
-              fontWeight: 'bold',
-              color: '#333',
-              marginBottom: 10,
+          }
+          EOF
+          
+          # Create tailwind.config.js
+          cat > tailwind.config.js << 'EOF'
+          /** @type {import('tailwindcss').Config} */
+          export default {
+            content: [
+              "./index.html",
+              "./src/**/*.{js,ts,jsx,tsx}",
+            ],
+            theme: {
+              extend: {},
             },
-            subtitle: {
-              fontSize: 18,
-              color: '#666',
-              marginBottom: 20,
+            plugins: [],
+          }
+          EOF
+          
+          # Create tsconfig.json for Capacitor
+          cat > tsconfig.json << 'EOF'
+          {
+            "compilerOptions": {
+              "target": "ES2020",
+              "useDefineForClassFields": true,
+              "lib": ["ES2020", "DOM", "DOM.Iterable"],
+              "module": "ESNext",
+              "skipLibCheck": true,
+              "moduleResolution": "bundler",
+              "allowImportingTsExtensions": true,
+              "resolveJsonModule": true,
+              "isolatedModules": true,
+              "noEmit": true,
+              "jsx": "react-jsx",
+              "strict": true,
+              "noUnusedLocals": true,
+              "noUnusedParameters": true,
+              "noFallthroughCasesInSwitch": true
             },
-            description: {
-              fontSize: 16,
-              color: '#888',
-              textAlign: 'center',
-              marginBottom: 30,
-            },
-            button: {
-              backgroundColor: '#007AFF',
-              paddingHorizontal: 30,
-              paddingVertical: 15,
-              borderRadius: 8,
-            },
-            buttonText: {
-              color: 'white',
-              fontSize: 18,
-              fontWeight: '600',
-            },
-          });
-
-          export default App;
+            "include": ["src"],
+            "references": [{ "path": "./tsconfig.node.json" }]
+          }
           EOF
 
-      - name: Configure for Play App Signing
+      - name: Build and Setup Capacitor
         script: |
-          cd OptiBuy
+          echo "=== Installing dependencies ==="
+          npm install
           
-          # Update package name
-          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/build.gradle
-          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/src/main/AndroidManifest.xml
+          echo "=== Building React app ==="
+          npm run build
+          ls -la dist/
           
-          # Create debug keystore (Google Play will re-sign automatically)
-          echo "=== Creating debug signing config ==="
+          echo "=== Installing Capacitor (compatible version) ==="
+          npm install @capacitor/core@5.7.8 @capacitor/cli@5.7.8 @capacitor/android@5.7.8
+          
+          echo "=== Initialize Capacitor ==="
+          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
+          
+          echo "=== Add Android platform ==="
+          npx cap add android
+          
+          echo "=== Fix Java compatibility in all Gradle files ==="
+          
+          # Fix app build.gradle - replace existing compileOptions
+          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
           cat >> android/app/build.gradle << 'EOF'
 
           android {
-              signingConfigs {
-                  debug {
-                      storeFile file('debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey' 
-                      keyPassword 'android'
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
               }
           }
           EOF
           
-          # Create debug keystore
-          keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
-
-      - name: Build AAB for Play Signing
-        script: |
-          cd OptiBuy/android
+          # Fix all Capacitor gradle files after they're created
+          find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/jvmTarget = "21"/jvmTarget = "17"/g' {} \; || true
           
-          # Set Java environment
+          # Set global gradle properties for Java 17
+          cat >> android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+          org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+          EOF
+          
+          echo "=== Create custom capacitor.config.ts with Java 17 ==="
+          cat > capacitor.config.ts << 'EOF'
+          import { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.optibuy.collective',
+            appName: 'OptiBuy',
+            webDir: 'dist',
+            android: {
+              buildOptions: {
+                keystorePath: undefined,
+                keystorePassword: undefined,
+                keystoreAlias: undefined,
+                keystoreAliasPassword: undefined,
+                releaseType: 'AAB'
+              }
+            }
+          };
+
+          export default config;
+          EOF
+          
+          echo "=== Sync web assets ==="
+          npx cap sync android
+          
+          echo "=== Verify Java configuration fixes ==="
+          echo "Checking all build.gradle files for Java version:"
+          find android -name "build.gradle" -exec grep -l "JavaVersion\|sourceCompatibility\|targetCompatibility" {} \; | while read file; do
+            echo "--- $file ---"
+            grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
+          done
+
+      - name: Set up signing for Google Play
+        script: |
+          echo "=== Creating debug keystore for Google Play App Signing ==="
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "C=US, O=Android, CN=Android Debug"
+          
+          echo "=== Setting up debug signing (Google Play will re-sign) ==="
+          cat >> "$CM_BUILD_DIR/android/key.properties" <<EOF
+          storePassword=android
+          keyPassword=android
+          keyAlias=androiddebugkey
+          storeFile=$CM_BUILD_DIR/debug.keystore
+          EOF
+
+      - name: Set up local properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+
+      - name: Build AAB
+        script: |
+          cd android
+          
+          # Set Java version explicitly
           export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           export PATH=$JAVA_HOME/bin:$PATH
+          java -version
           
-          echo "=== Building AAB for Google Play App Signing ==="
+          echo "=== Update gradle wrapper ==="
+          # Update gradle wrapper to use compatible version
+          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
+          cat gradle/wrapper/gradle-wrapper.properties
+          
           chmod +x gradlew
           ./gradlew clean
           ./gradlew bundleRelease
           
-          echo "=== AAB generated for Play Console ==="
+          echo "=== Check outputs ==="
           find . -name "*.aab" -exec ls -lh {} \;
           
-          cp app/build/outputs/bundle/release/app-release.aab ../../optibuy-play-signing.aab
-          ls -lh ../../optibuy-play-signing.aab
+          echo "=== Copy AAB for Google Play Signing ==="
+          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-play-signing.aab
+          ls -lh ../optibuy-play-signing.aab
 
     artifacts:
       - optibuy-play-signing.aab
+      - android/app/build/outputs/bundle/release/app-release.aab
