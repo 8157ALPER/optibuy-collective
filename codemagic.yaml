@@ -287,4 +287,5 @@ workflows:
     artifacts:
       - optibuy-play-signing.aab
       - upload_certificate.pem
+      - upload.keystore
       - android/app/build/outputs/bundle/release/app-release.aab
