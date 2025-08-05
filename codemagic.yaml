@@ -165,11 +165,19 @@ workflows:
       - name: Build and Setup Capacitor
         script: |
           echo "=== Installing dependencies ==="
-          npm install
+          npm install --verbose
+          
+          echo "=== Checking package.json ==="
+          cat package.json
           
           echo "=== Building React app ==="
-          npm run build
-          ls -la dist/
+          npm run build --verbose
+          
+          echo "=== Checking build output ==="
+          ls -la dist/ || echo "dist directory not found"
+          find . -name "dist" -type d -exec ls -la {} \;
+          echo "Total files created:"
+          find . -type f | wc -l
           
           echo "=== Installing Capacitor (compatible version) ==="
           npm install @capacitor/core@5.7.8 @capacitor/cli@5.7.8 @capacitor/android@5.7.8
@@ -177,8 +185,17 @@ workflows:
           echo "=== Initialize Capacitor ==="
           npx cap init OptiBuy com.optibuy.collective --web-dir=dist
           
+          echo "=== Verify Capacitor config ==="
+          ls -la capacitor.config.*
+          cat capacitor.config.ts || cat capacitor.config.js
+          
           echo "=== Add Android platform ==="
           npx cap add android
+          
+          echo "=== Verify Android platform added ==="
+          ls -la android/
+          echo "Android app structure:"
+          find android -name "*.gradle" | head -5
           
           echo "=== Fix Java compatibility in all Gradle files ==="
           
@@ -288,21 +305,40 @@ workflows:
           cat gradle/wrapper/gradle-wrapper.properties
           
           chmod +x gradlew
+          echo "=== Pre-build verification ==="
+          echo "Android directory structure:"
+          find android -type f -name "*.gradle" -exec echo "Found: {}" \;
+          echo "App source files:"
+          find android/app/src -type f | head -10
+          
           echo "=== Building AAB with R8 obfuscation ==="
           chmod +x gradlew
-          ./gradlew clean
-          ./gradlew bundleRelease --no-daemon --stacktrace
+          echo "Clean build..."
+          ./gradlew clean --stacktrace
+          echo "Building release bundle..."
+          ./gradlew bundleRelease --no-daemon --stacktrace --info
           
-          echo "=== Check outputs ==="
-          find . -name "*.aab" -exec ls -lh {} \;
+          echo "=== Detailed build output verification ==="
+          echo "All AAB files found:"
+          find . -name "*.aab" -exec ls -lh {} \; -exec file {} \;
+          echo "Build outputs directory:"
+          find android -path "*/build/outputs*" -type f -exec ls -la {} \;
           
           echo "=== Verify R8 obfuscation mapping file ==="
-          find . -name "mapping.txt" -type f -exec ls -la {} \;
+          find . -name "mapping.txt" -type f -exec ls -la {} \; -exec wc -l {} \;
           
-          echo "=== Copy AAB for Google Play managed signing ==="
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-managed-signing.aab
-          ls -lh ../optibuy-managed-signing.aab
-          file ../optibuy-managed-signing.aab
+          echo "=== Copy and verify AAB for Google Play managed signing ==="
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-managed-signing.aab
+            echo "AAB copied successfully:"
+            ls -lh ../optibuy-managed-signing.aab
+            file ../optibuy-managed-signing.aab
+            echo "AAB size: $(du -h ../optibuy-managed-signing.aab)"
+          else
+            echo "ERROR: AAB file not found!"
+            echo "Build outputs:"
+            find . -name "*.aab" -o -name "*.apk"
+          fi
 
     artifacts:
       - optibuy-managed-signing.aab
