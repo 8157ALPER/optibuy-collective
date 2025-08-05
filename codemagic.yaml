@@ -1,9 +1,9 @@
-# Original Successful 284-line Configuration with ANYQUE-style Managed Signing
-# Based on proven 2.64 MB AAB generation with Google Play Console compatibility
+# React Native + ANYQUE Google Play Managed Signing
+# Based on successful 2.64 MB AAB generation using React Native approach
 
 workflows:
-  minimal-aab:
-    name: OptiBuy AAB Build - Google Play Managed Signing
+  react-native-aab:
+    name: OptiBuy React Native AAB - Google Play Managed
     max_build_duration: 60
     instance_type: mac_mini_m1
     
@@ -14,235 +14,293 @@ workflows:
       node: 18
     
     scripts:
-      - name: Setup and Create React App
+      - name: Create React Native Project
         script: |
-          echo "=== Creating minimal React project ==="
+          echo "=== Creating React Native project ==="
           
-          # Create package.json
-          cat > package.json << 'EOF'
-          {
-            "name": "optibuy",
-            "version": "1.0.0",
-            "scripts": {
-              "build": "vite build"
-            },
-            "dependencies": {
-              "react": "^18.2.0",
-              "react-dom": "^18.2.0"
-            },
-            "devDependencies": {
-              "vite": "^5.0.0",
-              "@vitejs/plugin-react": "^4.0.0",
-              "typescript": "^5.0.0",
-              "tailwindcss": "^3.3.0",
-              "autoprefixer": "^10.4.0",
-              "postcss": "^8.4.0"
-            }
-          }
-          EOF
+          # Create React Native project with TypeScript template
+          npx react-native init OptiBuy --template react-native-template-typescript
+          cd OptiBuy
           
-          # Create directories
-          mkdir -p src public
-          
-          # Create index.html
-          cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>OptiBuy</title>
-            </head>
-            <body>
-              <div id="root"></div>
-              <script type="module" src="/src/main.jsx"></script>
-            </body>
-          </html>
-          EOF
-          
-          # Create index.css with Tailwind
-          cat > src/index.css << 'EOF'
-          @tailwind base;
-          @tailwind components;
-          @tailwind utilities;
-          EOF
-          
-          # Create App.jsx
-          cat > src/App.jsx << 'EOF'
-          import './index.css'
-          
-          function App() {
+          # Create comprehensive app content
+          cat > App.tsx << 'EOF'
+          import React from 'react';
+          import {
+            SafeAreaView,
+            ScrollView,
+            Text,
+            StyleSheet,
+            TouchableOpacity,
+            Alert,
+            View,
+            Dimensions,
+          } from 'react-native';
+
+          const {width} = Dimensions.get('window');
+
+          function App(): React.JSX.Element {
+            const showAlert = (title: string, message: string) => {
+              Alert.alert(title, message);
+            };
+
             return (
-              <div className="p-5 text-center">
-                <h1 className="text-2xl font-bold mb-4">OptiBuy - Collective Purchasing</h1>
-                <p className="mb-4">Discover invisible buying neighbors for bulk discounts</p>
-                <button 
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  onClick={() => alert('Welcome to OptiBuy!')}
-                >
-                  Get Started
-                </button>
-              </div>
-            )
+              <SafeAreaView style={styles.container}>
+                <ScrollView contentInsetAdjustmentBehavior="automatic">
+                  {/* Header */}
+                  <View style={styles.header}>
+                    <Text style={styles.title}>OptiBuy</Text>
+                    <Text style={styles.subtitle}>Collective Purchasing Platform</Text>
+                  </View>
+
+                  {/* Hero Section */}
+                  <View style={styles.heroSection}>
+                    <Text style={styles.heroTitle}>
+                      Discover Invisible Buying Neighbors
+                    </Text>
+                    <Text style={styles.heroDescription}>
+                      Join collective purchases and unlock bulk pricing discounts for your business needs
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.primaryButton}
+                      onPress={() => showAlert('Welcome', 'Welcome to OptiBuy! Start saving with collective purchasing.')}
+                    >
+                      <Text style={styles.primaryButtonText}>Get Started Today</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Features Section */}
+                  <View style={styles.featuresSection}>
+                    <Text style={styles.sectionTitle}>Key Features</Text>
+                    
+                    <View style={styles.featureCard}>
+                      <Text style={styles.featureTitle}>🛒 Smart Purchasing</Text>
+                      <Text style={styles.featureDescription}>
+                        Create purchase intentions and discover when others need the same items at the same time
+                      </Text>
+                    </View>
+
+                    <View style={styles.featureCard}>
+                      <Text style={styles.featureTitle}>👥 Collective Power</Text>
+                      <Text style={styles.featureDescription}>
+                        Join forces with other buyers to negotiate better prices through volume purchasing
+                      </Text>
+                    </View>
+
+                    <View style={styles.featureCard}>
+                      <Text style={styles.featureTitle}>📊 Market Analytics</Text>
+                      <Text style={styles.featureDescription}>
+                        Access real-time market demand data to make informed purchasing decisions
+                      </Text>
+                    </View>
+
+                    <View style={styles.featureCard}>
+                      <Text style={styles.featureTitle}>🏥 B2B Focus</Text>
+                      <Text style={styles.featureDescription}>
+                        Specialized for veterinary clinics and pharmacies in Turkey with professional features
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* CTA Section */}
+                  <View style={styles.ctaSection}>
+                    <Text style={styles.ctaTitle}>Ready to Save with Collective Purchasing?</Text>
+                    <Text style={styles.ctaDescription}>
+                      Join thousands of smart buyers who save money through strategic bulk purchasing
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.secondaryButton}
+                      onPress={() => showAlert('Get Started', 'Create your first purchase intention and start discovering buying opportunities!')}
+                    >
+                      <Text style={styles.secondaryButtonText}>Start Saving Now</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Footer */}
+                  <View style={styles.footer}>
+                    <Text style={styles.footerText}>
+                      © 2025 OptiBuy. Collective purchasing platform for smarter buying decisions.
+                    </Text>
+                  </View>
+                </ScrollView>
+              </SafeAreaView>
+            );
           }
-          export default App
-          EOF
-          
-          # Create main.jsx
-          cat > src/main.jsx << 'EOF'
-          import React from 'react'
-          import ReactDOM from 'react-dom/client'
-          import App from './App'
-          
-          ReactDOM.createRoot(document.getElementById('root')).render(<App />)
-          EOF
-          
-          # Create vite.config.js
-          cat > vite.config.js << 'EOF'
-          import { defineConfig } from 'vite'
-          import react from '@vitejs/plugin-react'
-          
-          export default defineConfig({
-            plugins: [react()],
-            build: {
-              outDir: 'dist'
-            }
-          })
-          EOF
-          
-          # Create postcss.config.js
-          cat > postcss.config.js << 'EOF'
-          export default {
-            plugins: {
-              tailwindcss: {},
-              autoprefixer: {},
+
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              backgroundColor: '#f8f9fa',
             },
-          }
-          EOF
-          
-          # Create tailwind.config.js
-          cat > tailwind.config.js << 'EOF'
-          /** @type {import('tailwindcss').Config} */
-          export default {
-            content: [
-              "./index.html",
-              "./src/**/*.{js,ts,jsx,tsx}",
-            ],
-            theme: {
-              extend: {},
+            header: {
+              backgroundColor: '#ffffff',
+              paddingVertical: 20,
+              paddingHorizontal: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: '#e9ecef',
+              shadowColor: '#000',
+              shadowOffset: {width: 0, height: 2},
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
             },
-            plugins: [],
-          }
-          EOF
-          
-          # Create tsconfig.json for Capacitor
-          cat > tsconfig.json << 'EOF'
-          {
-            "compilerOptions": {
-              "target": "ES2020",
-              "useDefineForClassFields": true,
-              "lib": ["ES2020", "DOM", "DOM.Iterable"],
-              "module": "ESNext",
-              "skipLibCheck": true,
-              "moduleResolution": "bundler",
-              "allowImportingTsExtensions": true,
-              "resolveJsonModule": true,
-              "isolatedModules": true,
-              "noEmit": true,
-              "jsx": "react-jsx",
-              "strict": true,
-              "noUnusedLocals": true,
-              "noUnusedParameters": true,
-              "noFallthroughCasesInSwitch": true
+            title: {
+              fontSize: 28,
+              fontWeight: 'bold',
+              color: '#212529',
+              textAlign: 'center',
             },
-            "include": ["src"],
-            "references": [{ "path": "./tsconfig.node.json" }]
-          }
+            subtitle: {
+              fontSize: 16,
+              color: '#6c757d',
+              textAlign: 'center',
+              marginTop: 5,
+            },
+            heroSection: {
+              backgroundColor: '#ffffff',
+              padding: 30,
+              alignItems: 'center',
+              marginBottom: 20,
+            },
+            heroTitle: {
+              fontSize: 24,
+              fontWeight: 'bold',
+              color: '#212529',
+              textAlign: 'center',
+              marginBottom: 15,
+              lineHeight: 32,
+            },
+            heroDescription: {
+              fontSize: 16,
+              color: '#6c757d',
+              textAlign: 'center',
+              marginBottom: 25,
+              lineHeight: 24,
+              paddingHorizontal: 10,
+            },
+            primaryButton: {
+              backgroundColor: '#007bff',
+              paddingVertical: 15,
+              paddingHorizontal: 30,
+              borderRadius: 8,
+              shadowColor: '#000',
+              shadowOffset: {width: 0, height: 2},
+              shadowOpacity: 0.15,
+              shadowRadius: 4,
+              elevation: 3,
+            },
+            primaryButtonText: {
+              color: '#ffffff',
+              fontSize: 18,
+              fontWeight: '600',
+              textAlign: 'center',
+            },
+            featuresSection: {
+              backgroundColor: '#ffffff',
+              padding: 20,
+              marginBottom: 20,
+            },
+            sectionTitle: {
+              fontSize: 22,
+              fontWeight: 'bold',
+              color: '#212529',
+              marginBottom: 20,
+              textAlign: 'center',
+            },
+            featureCard: {
+              backgroundColor: '#f8f9fa',
+              padding: 20,
+              borderRadius: 10,
+              marginBottom: 15,
+              borderLeftWidth: 4,
+              borderLeftColor: '#007bff',
+            },
+            featureTitle: {
+              fontSize: 18,
+              fontWeight: '600',
+              color: '#212529',
+              marginBottom: 8,
+            },
+            featureDescription: {
+              fontSize: 14,
+              color: '#6c757d',
+              lineHeight: 20,
+            },
+            ctaSection: {
+              backgroundColor: '#e3f2fd',
+              padding: 30,
+              alignItems: 'center',
+              marginBottom: 20,
+              borderRadius: 15,
+              marginHorizontal: 10,
+            },
+            ctaTitle: {
+              fontSize: 20,
+              fontWeight: 'bold',
+              color: '#212529',
+              textAlign: 'center',
+              marginBottom: 15,
+            },
+            ctaDescription: {
+              fontSize: 14,
+              color: '#6c757d',
+              textAlign: 'center',
+              marginBottom: 20,
+              lineHeight: 20,
+            },
+            secondaryButton: {
+              backgroundColor: '#28a745',
+              paddingVertical: 12,
+              paddingHorizontal: 25,
+              borderRadius: 6,
+            },
+            secondaryButtonText: {
+              color: '#ffffff',
+              fontSize: 16,
+              fontWeight: '600',
+            },
+            footer: {
+              backgroundColor: '#ffffff',
+              padding: 20,
+              borderTopWidth: 1,
+              borderTopColor: '#e9ecef',
+            },
+            footerText: {
+              fontSize: 12,
+              color: '#6c757d',
+              textAlign: 'center',
+              lineHeight: 18,
+            },
+          });
+
+          export default App;
           EOF
 
-      - name: Build and Setup Capacitor
+      - name: Setup Android Build with ANYQUE-style Signing
         script: |
-          echo "=== Installing dependencies ==="
-          npm install
+          cd OptiBuy
           
-          echo "=== Building React app ==="
-          npm run build
-          ls -la dist/
+          echo "=== Setting up Android build with Java 17 ==="
           
-          echo "=== Installing Capacitor (compatible version) ==="
-          npm install @capacitor/core@5.7.8 @capacitor/cli@5.7.8 @capacitor/android@5.7.8
+          # Update package name in Android config
+          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/build.gradle
+          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/src/main/AndroidManifest.xml
           
-          echo "=== Initialize Capacitor ==="
-          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
+          # Force Java 17 in all gradle files
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_.*)/JavaVersion.VERSION_17)/g' {} \;
+          find android -name "build.gradle" -exec sed -i 's/jvmTarget.*=.*/jvmTarget = "17"/g' {} \;
           
-          echo "=== Add Android platform ==="
-          npx cap add android
-          
-          echo "=== Fix Java compatibility in all Gradle files ==="
-          
-          # Fix app build.gradle - replace existing compileOptions
-          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
-          cat >> android/app/build.gradle << 'EOF'
-
-          android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }
-          EOF
-          
-          # Fix project build.gradle
-          sed -i 's/classpath.*com.android.tools.build:gradle.*/classpath "com.android.tools.build:gradle:8.5.2"/' android/build.gradle
-          
-          # Set global gradle properties for Java 17
+          # Set gradle properties
           cat >> android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
           org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           EOF
           
-          echo "=== Create custom capacitor.config.ts with Java 17 ==="
-          cat > capacitor.config.ts << 'EOF'
-          import { CapacitorConfig } from '@capacitor/cli';
+          # Create keystore like ANYQUE
+          echo "=== Creating release keystore like ANYQUE ==="
+          keytool -genkey -v -keystore android/app/release-key.keystore -alias release-key -keyalg RSA -keysize 2048 -validity 10000 -storepass optibuy123 -keypass optibuy123 -dname "CN=OptiBuy, OU=Mobile, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
+          
+          # Configure release signing and R8 obfuscation like ANYQUE
+          cat >> android/app/build.gradle << 'EOF'
 
-          const config: CapacitorConfig = {
-            appId: 'com.optibuy.collective',
-            appName: 'OptiBuy',
-            webDir: 'dist',
-            android: {
-              buildOptions: {
-                keystorePath: undefined,
-                keystorePassword: undefined,
-                keystoreAlias: undefined,
-                keystoreAliasPassword: undefined,
-                releaseType: 'AAB'
-              }
-            }
-          };
-
-          export default config;
-          EOF
-          
-          echo "=== Sync web assets ==="
-          npx cap sync android
-          
-          echo "=== Verify Java configuration fixes ==="
-          echo "Checking all build.gradle files for Java version:"
-          find android -name "build.gradle" -exec grep -l "JavaVersion\|sourceCompatibility\|targetCompatibility" {} \; | while read file; do
-            echo "--- $file ---"
-            grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
-          done
-
-      - name: Configure ANYQUE-style release signing
-        script: |
-          cd android
-          
-          # Create a keystore for release signing like ANYQUE
-          keytool -genkey -v -keystore release-key.keystore -alias release-key -keyalg RSA -keysize 2048 -validity 10000 -storepass optibuy123 -keypass optibuy123 -dname "CN=OptiBuy, OU=Mobile, O=OptiBuy, L=Istanbul, S=Istanbul, C=TR"
-          
-          # Configure release signing and R8 obfuscation in build.gradle like ANYQUE
-          cat >> app/build.gradle << 'EOF'
-          
           android {
               compileSdkVersion 34
               
@@ -253,7 +311,7 @@ workflows:
               
               signingConfigs {
                   release {
-                      storeFile file('../release-key.keystore')
+                      storeFile file('release-key.keystore')
                       storePassword 'optibuy123'
                       keyAlias 'release-key'
                       keyPassword 'optibuy123'
@@ -272,39 +330,33 @@ workflows:
           EOF
           
           # Create proguard rules file like ANYQUE
-          cat > app/proguard-rules.pro << 'EOF'
+          cat > android/app/proguard-rules.pro << 'EOF'
           # Keep main activity
           -keep public class * extends android.app.Activity
           -keep public class * extends android.app.Application
           -keep public class * extends android.app.Service
           
-          # Keep Capacitor classes
-          -keep class io.ionic.capacitor.** { *; }
+          # Keep React Native classes
+          -keep class com.facebook.react.** { *; }
+          -keep class com.facebook.hermes.** { *; }
           
           # Reduce warnings
           -dontwarn java.lang.invoke.StringConcatFactory
           EOF
 
-      - name: Set up local properties
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
       - name: Build AAB like ANYQUE
         script: |
-          cd android
+          cd OptiBuy/android
           
-          # Set Java version explicitly
+          # Set Java 17 environment
           export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           export PATH=$JAVA_HOME/bin:$PATH
+          
+          echo "Java version:"
           java -version
           
-          echo "=== Update gradle wrapper ==="
-          # Update gradle wrapper to use compatible version
-          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties
-          
-          chmod +x gradlew
           echo "Building properly signed release bundle..."
+          chmod +x gradlew
           ./gradlew clean
           ./gradlew bundleRelease --no-daemon --stacktrace
           
@@ -314,13 +366,13 @@ workflows:
           echo "Bundle file size: $(du -h app/build/outputs/bundle/release/app-release.aab)"
           
           echo "Copying bundle for artifacts..."
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-managed-v1.0.0.aab
-          ls -la ../optibuy-managed-v1.0.0.aab
-          file ../optibuy-managed-v1.0.0.aab
+          cp app/build/outputs/bundle/release/app-release.aab ../../optibuy-managed-v1.0.0.aab
+          ls -la ../../optibuy-managed-v1.0.0.aab
+          file ../../optibuy-managed-v1.0.0.aab
 
     artifacts:
       - optibuy-managed-v1.0.0.aab
-      - android/release-key.keystore
+      - OptiBuy/android/app/release-key.keystore
     publishing:
       email:
         recipients:
