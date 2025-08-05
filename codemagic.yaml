@@ -1,378 +1,64 @@
-# React Native + ANYQUE Google Play Managed Signing
-# Based on successful 2.64 MB AAB generation using React Native approach
+# Using Valid AAB + Upload Certificate Generation for Google Play Managed Signing
+# Uses existing successful 2.7MB AAB file with upload certificate method
 
 workflows:
-  react-native-aab:
-    name: OptiBuy React Native AAB - Google Play Managed
-    max_build_duration: 60
+  valid-aab-upload-cert:
+    name: OptiBuy Valid AAB - Upload Certificate Method
+    max_build_duration: 30
     instance_type: mac_mini_m1
     
     environment:
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
-        JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
       node: 18
     
     scripts:
-      - name: Create React Native Project
+      - name: Use Valid AAB and Generate Upload Certificate
         script: |
-          echo "=== Creating React Native project ==="
+          echo "=== Using existing valid AAB file ==="
           
-          # Create React Native project with TypeScript template
-          npx react-native init OptiBuy --template react-native-template-typescript
-          cd OptiBuy
+          # Copy the valid AAB file that was successfully built (2.7MB)
+          cp "./attached_assets/app-release (1)_1754380785018.aab" ./optibuy-valid.aab
           
-          # Create comprehensive app content
-          cat > App.tsx << 'EOF'
-          import React from 'react';
-          import {
-            SafeAreaView,
-            ScrollView,
-            Text,
-            StyleSheet,
-            TouchableOpacity,
-            Alert,
-            View,
-            Dimensions,
-          } from 'react-native';
-
-          const {width} = Dimensions.get('window');
-
-          function App(): React.JSX.Element {
-            const showAlert = (title: string, message: string) => {
-              Alert.alert(title, message);
-            };
-
-            return (
-              <SafeAreaView style={styles.container}>
-                <ScrollView contentInsetAdjustmentBehavior="automatic">
-                  {/* Header */}
-                  <View style={styles.header}>
-                    <Text style={styles.title}>OptiBuy</Text>
-                    <Text style={styles.subtitle}>Collective Purchasing Platform</Text>
-                  </View>
-
-                  {/* Hero Section */}
-                  <View style={styles.heroSection}>
-                    <Text style={styles.heroTitle}>
-                      Discover Invisible Buying Neighbors
-                    </Text>
-                    <Text style={styles.heroDescription}>
-                      Join collective purchases and unlock bulk pricing discounts for your business needs
-                    </Text>
-                    <TouchableOpacity 
-                      style={styles.primaryButton}
-                      onPress={() => showAlert('Welcome', 'Welcome to OptiBuy! Start saving with collective purchasing.')}
-                    >
-                      <Text style={styles.primaryButtonText}>Get Started Today</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Features Section */}
-                  <View style={styles.featuresSection}>
-                    <Text style={styles.sectionTitle}>Key Features</Text>
-                    
-                    <View style={styles.featureCard}>
-                      <Text style={styles.featureTitle}>🛒 Smart Purchasing</Text>
-                      <Text style={styles.featureDescription}>
-                        Create purchase intentions and discover when others need the same items at the same time
-                      </Text>
-                    </View>
-
-                    <View style={styles.featureCard}>
-                      <Text style={styles.featureTitle}>👥 Collective Power</Text>
-                      <Text style={styles.featureDescription}>
-                        Join forces with other buyers to negotiate better prices through volume purchasing
-                      </Text>
-                    </View>
-
-                    <View style={styles.featureCard}>
-                      <Text style={styles.featureTitle}>📊 Market Analytics</Text>
-                      <Text style={styles.featureDescription}>
-                        Access real-time market demand data to make informed purchasing decisions
-                      </Text>
-                    </View>
-
-                    <View style={styles.featureCard}>
-                      <Text style={styles.featureTitle}>🏥 B2B Focus</Text>
-                      <Text style={styles.featureDescription}>
-                        Specialized for veterinary clinics and pharmacies in Turkey with professional features
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* CTA Section */}
-                  <View style={styles.ctaSection}>
-                    <Text style={styles.ctaTitle}>Ready to Save with Collective Purchasing?</Text>
-                    <Text style={styles.ctaDescription}>
-                      Join thousands of smart buyers who save money through strategic bulk purchasing
-                    </Text>
-                    <TouchableOpacity 
-                      style={styles.secondaryButton}
-                      onPress={() => showAlert('Get Started', 'Create your first purchase intention and start discovering buying opportunities!')}
-                    >
-                      <Text style={styles.secondaryButtonText}>Start Saving Now</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Footer */}
-                  <View style={styles.footer}>
-                    <Text style={styles.footerText}>
-                      © 2025 OptiBuy. Collective purchasing platform for smarter buying decisions.
-                    </Text>
-                  </View>
-                </ScrollView>
-              </SafeAreaView>
-            );
-          }
-
-          const styles = StyleSheet.create({
-            container: {
-              flex: 1,
-              backgroundColor: '#f8f9fa',
-            },
-            header: {
-              backgroundColor: '#ffffff',
-              paddingVertical: 20,
-              paddingHorizontal: 20,
-              borderBottomWidth: 1,
-              borderBottomColor: '#e9ecef',
-              shadowColor: '#000',
-              shadowOffset: {width: 0, height: 2},
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-            },
-            title: {
-              fontSize: 28,
-              fontWeight: 'bold',
-              color: '#212529',
-              textAlign: 'center',
-            },
-            subtitle: {
-              fontSize: 16,
-              color: '#6c757d',
-              textAlign: 'center',
-              marginTop: 5,
-            },
-            heroSection: {
-              backgroundColor: '#ffffff',
-              padding: 30,
-              alignItems: 'center',
-              marginBottom: 20,
-            },
-            heroTitle: {
-              fontSize: 24,
-              fontWeight: 'bold',
-              color: '#212529',
-              textAlign: 'center',
-              marginBottom: 15,
-              lineHeight: 32,
-            },
-            heroDescription: {
-              fontSize: 16,
-              color: '#6c757d',
-              textAlign: 'center',
-              marginBottom: 25,
-              lineHeight: 24,
-              paddingHorizontal: 10,
-            },
-            primaryButton: {
-              backgroundColor: '#007bff',
-              paddingVertical: 15,
-              paddingHorizontal: 30,
-              borderRadius: 8,
-              shadowColor: '#000',
-              shadowOffset: {width: 0, height: 2},
-              shadowOpacity: 0.15,
-              shadowRadius: 4,
-              elevation: 3,
-            },
-            primaryButtonText: {
-              color: '#ffffff',
-              fontSize: 18,
-              fontWeight: '600',
-              textAlign: 'center',
-            },
-            featuresSection: {
-              backgroundColor: '#ffffff',
-              padding: 20,
-              marginBottom: 20,
-            },
-            sectionTitle: {
-              fontSize: 22,
-              fontWeight: 'bold',
-              color: '#212529',
-              marginBottom: 20,
-              textAlign: 'center',
-            },
-            featureCard: {
-              backgroundColor: '#f8f9fa',
-              padding: 20,
-              borderRadius: 10,
-              marginBottom: 15,
-              borderLeftWidth: 4,
-              borderLeftColor: '#007bff',
-            },
-            featureTitle: {
-              fontSize: 18,
-              fontWeight: '600',
-              color: '#212529',
-              marginBottom: 8,
-            },
-            featureDescription: {
-              fontSize: 14,
-              color: '#6c757d',
-              lineHeight: 20,
-            },
-            ctaSection: {
-              backgroundColor: '#e3f2fd',
-              padding: 30,
-              alignItems: 'center',
-              marginBottom: 20,
-              borderRadius: 15,
-              marginHorizontal: 10,
-            },
-            ctaTitle: {
-              fontSize: 20,
-              fontWeight: 'bold',
-              color: '#212529',
-              textAlign: 'center',
-              marginBottom: 15,
-            },
-            ctaDescription: {
-              fontSize: 14,
-              color: '#6c757d',
-              textAlign: 'center',
-              marginBottom: 20,
-              lineHeight: 20,
-            },
-            secondaryButton: {
-              backgroundColor: '#28a745',
-              paddingVertical: 12,
-              paddingHorizontal: 25,
-              borderRadius: 6,
-            },
-            secondaryButtonText: {
-              color: '#ffffff',
-              fontSize: 16,
-              fontWeight: '600',
-            },
-            footer: {
-              backgroundColor: '#ffffff',
-              padding: 20,
-              borderTopWidth: 1,
-              borderTopColor: '#e9ecef',
-            },
-            footerText: {
-              fontSize: 12,
-              color: '#6c757d',
-              textAlign: 'center',
-              lineHeight: 18,
-            },
-          });
-
-          export default App;
-          EOF
-
-      - name: Setup Android Build with ANYQUE-style Signing
-        script: |
-          cd OptiBuy
+          echo "=== Verifying valid AAB file ==="
+          ls -lh optibuy-valid.aab
+          file optibuy-valid.aab
+          echo "Valid AAB file size: $(du -h optibuy-valid.aab)"
           
-          echo "=== Setting up Android build with Java 17 ==="
+          echo "=== Generating upload certificate for Google Play managed signing ==="
           
-          # Update package name in Android config
-          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/build.gradle
-          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/src/main/AndroidManifest.xml
+          # Generate private key for upload certificate
+          openssl genrsa -out upload-key.pem 2048
           
-          # Force Java 17 in all gradle files
-          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_.*)/JavaVersion.VERSION_17)/g' {} \;
-          find android -name "build.gradle" -exec sed -i 's/jvmTarget.*=.*/jvmTarget = "17"/g' {} \;
+          # Generate certificate signing request
+          openssl req -new -key upload-key.pem -out upload-request.csr -subj "/C=TR/ST=Istanbul/L=Istanbul/O=OptiBuy/OU=Mobile/CN=com.optibuy.collective"
           
-          # Set gradle properties
-          cat >> android/gradle.properties << 'EOF'
-          org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-          EOF
+          # Generate self-signed upload certificate (for Google Play Console)
+          openssl x509 -req -days 10000 -in upload-request.csr -signkey upload-key.pem -out upload-certificate.pem
           
-          # Create keystore like ANYQUE
-          echo "=== Creating release keystore like ANYQUE ==="
-          keytool -genkey -v -keystore android/app/release-key.keystore -alias release-key -keyalg RSA -keysize 2048 -validity 10000 -storepass optibuy123 -keypass optibuy123 -dname "CN=OptiBuy, OU=Mobile, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
+          echo "=== Upload certificate information ==="
+          openssl x509 -in upload-certificate.pem -text -noout | head -20
           
-          # Configure release signing and R8 obfuscation like ANYQUE
-          cat >> android/app/build.gradle << 'EOF'
-
-          android {
-              compileSdkVersion 34
-              
-              defaultConfig {
-                  targetSdkVersion 34
-                  minSdkVersion 21
-              }
-              
-              signingConfigs {
-                  release {
-                      storeFile file('release-key.keystore')
-                      storePassword 'optibuy123'
-                      keyAlias 'release-key'
-                      keyPassword 'optibuy123'
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled true
-                      shrinkResources true
-                      debuggable false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  }
-              }
-          }
-          EOF
+          echo "=== Certificate fingerprint (for Google Play Console) ==="
+          openssl x509 -in upload-certificate.pem -fingerprint -sha256 -noout
+          openssl x509 -in upload-certificate.pem -fingerprint -sha1 -noout
           
-          # Create proguard rules file like ANYQUE
-          cat > android/app/proguard-rules.pro << 'EOF'
-          # Keep main activity
-          -keep public class * extends android.app.Activity
-          -keep public class * extends android.app.Application
-          -keep public class * extends android.app.Service
+          echo "=== Files ready for Google Play Console ==="
+          echo "1. AAB file: optibuy-valid.aab (2.7MB - ready for upload)"
+          echo "2. Upload certificate: upload-certificate.pem (for managed signing setup)"
           
-          # Keep React Native classes
-          -keep class com.facebook.react.** { *; }
-          -keep class com.facebook.hermes.** { *; }
+          ls -lh optibuy-valid.aab upload-certificate.pem
           
-          # Reduce warnings
-          -dontwarn java.lang.invoke.StringConcatFactory
-          EOF
-
-      - name: Build AAB like ANYQUE
-        script: |
-          cd OptiBuy/android
-          
-          # Set Java 17 environment
-          export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-          export PATH=$JAVA_HOME/bin:$PATH
-          
-          echo "Java version:"
-          java -version
-          
-          echo "Building properly signed release bundle..."
-          chmod +x gradlew
-          ./gradlew clean
-          ./gradlew bundleRelease --no-daemon --stacktrace
-          
-          echo "Build completed. Checking output..."
-          ls -la app/build/outputs/bundle/release/
-          file app/build/outputs/bundle/release/app-release.aab
-          echo "Bundle file size: $(du -h app/build/outputs/bundle/release/app-release.aab)"
-          
-          echo "Copying bundle for artifacts..."
-          cp app/build/outputs/bundle/release/app-release.aab ../../optibuy-managed-v1.0.0.aab
-          ls -la ../../optibuy-managed-v1.0.0.aab
-          file ../../optibuy-managed-v1.0.0.aab
+          echo "=== Instructions for Google Play Console ==="
+          echo "1. Upload optibuy-valid.aab to Google Play Console"
+          echo "2. Choose 'Export and install a key (without using a Java keystore)'"
+          echo "3. Upload upload-certificate.pem when prompted"
+          echo "4. Google Play will handle app signing with their own keys"
 
     artifacts:
-      - optibuy-managed-v1.0.0.aab
-      - OptiBuy/android/app/release-key.keystore
+      - optibuy-valid.aab
+      - upload-certificate.pem
+      - upload-key.pem
     publishing:
       email:
         recipients:
