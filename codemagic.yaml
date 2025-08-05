@@ -179,7 +179,10 @@ workflows:
           echo "=== Add Android platform ==="
           npx cap add android
           
-          echo "=== Fix Java compatibility ==="
+          echo "=== Fix Java compatibility in all Gradle files ==="
+          
+          # Fix app build.gradle - replace existing compileOptions
+          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
           cat >> android/app/build.gradle << 'EOF'
 
           android {
@@ -190,13 +193,49 @@ workflows:
           }
           EOF
           
-          # Fix Capacitor Android gradle file
-          sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' android/capacitor-android/build.gradle || true
-          sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' android/capacitor-android/build.gradle || true
-          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/capacitor-android/build.gradle || true
+          # Fix all Capacitor gradle files after they're created
+          find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/jvmTarget = "21"/jvmTarget = "17"/g' {} \; || true
+          
+          # Set global gradle properties for Java 17
+          cat >> android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+          org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+          EOF
+          
+          echo "=== Create custom capacitor.config.ts with Java 17 ==="
+          cat > capacitor.config.ts << 'EOF'
+          import { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.optibuy.collective',
+            appName: 'OptiBuy',
+            webDir: 'dist',
+            android: {
+              buildOptions: {
+                keystorePath: undefined,
+                keystorePassword: undefined,
+                keystoreAlias: undefined,
+                keystoreAliasPassword: undefined,
+                releaseType: 'AAB'
+              }
+            }
+          };
+
+          export default config;
+          EOF
           
           echo "=== Sync web assets ==="
           npx cap sync android
+          
+          echo "=== Verify Java configuration fixes ==="
+          echo "Checking all build.gradle files for Java version:"
+          find android -name "build.gradle" -exec grep -l "JavaVersion\|sourceCompatibility\|targetCompatibility" {} \; | while read file; do
+            echo "--- $file ---"
+            grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
+          done
 
       - name: Set up signing
         script: |
