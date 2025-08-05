@@ -1,9 +1,9 @@
-# Minimal Working React-to-AAB Build - Google Play App Signing Compatible
-# Uses debug keystore for Google Play Console automatic signing
+# Ultra Simple AAB Build - Avoiding Java Version Conflicts
+# Uses React Native CLI approach instead of Capacitor
 
 workflows:
-  minimal-aab:
-    name: Minimal React AAB Build
+  simple-aab:
+    name: Simple React AAB Build
     max_build_duration: 60
     instance_type: mac_mini_m1
     
@@ -12,479 +12,145 @@ workflows:
         - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
-        JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-      node: 18
-    
+        
     scripts:
-      - name: Create Complete React Project Structure
+      - name: Create Minimal Project
         script: |
-          echo "=== Creating comprehensive package.json ==="
-          cat > package.json << 'EOF'
-          {
-            "name": "optibuy",
-            "version": "1.0.0",
-            "type": "module",
-            "scripts": {
-              "dev": "vite",
-              "build": "vite build",
-              "preview": "vite preview"
-            },
-            "dependencies": {
-              "react": "^18.2.0",
-              "react-dom": "^18.2.0",
-              "clsx": "^2.0.0",
-              "lucide-react": "^0.263.1"
-            },
-            "devDependencies": {
-              "@types/react": "^18.2.0",
-              "@types/react-dom": "^18.2.0",
-              "@vitejs/plugin-react": "^4.0.0",
-              "typescript": "^5.0.0",
-              "vite": "^5.0.0",
-              "tailwindcss": "^3.3.0",
-              "autoprefixer": "^10.4.0",
-              "postcss": "^8.4.0"
-            }
-          }
-          EOF
+          echo "=== Creating ultra-minimal Android project ==="
           
-          echo "=== Creating project directories ==="
-          mkdir -p src/components/ui src/pages src/lib public
+          # Create React Native project with minimal setup
+          npx react-native init OptiBuy --template react-native-template-typescript
+          cd OptiBuy
           
-          echo "=== Creating index.html ==="
-          cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>OptiBuy - Collective Purchasing Platform</title>
-            </head>
-            <body>
-              <div id="root"></div>
-              <script type="module" src="/src/main.tsx"></script>
-            </body>
-          </html>
-          EOF
-          
-          echo "=== Creating comprehensive CSS ==="
-          cat > src/index.css << 'EOF'
-          @tailwind base;
-          @tailwind components;
-          @tailwind utilities;
-          
-          :root {
-            --primary: 222.2 84% 4.9%;
-            --primary-foreground: 210 40% 98%;
-            --secondary: 210 40% 96%;
-            --secondary-foreground: 222.2 84% 4.9%;
-            --muted: 210 40% 96%;
-            --muted-foreground: 215.4 16.3% 46.9%;
-            --accent: 210 40% 96%;
-            --accent-foreground: 222.2 84% 4.9%;
-            --destructive: 0 84.2% 60.2%;
-            --destructive-foreground: 210 40% 98%;
-            --border: 214.3 31.8% 91.4%;
-            --input: 214.3 31.8% 91.4%;
-            --ring: 222.2 84% 4.9%;
-            --radius: 0.5rem;
-            --background: 0 0% 100%;
-            --foreground: 222.2 84% 4.9%;
-            --card: 0 0% 100%;
-            --card-foreground: 222.2 84% 4.9%;
-            --popover: 0 0% 100%;
-            --popover-foreground: 222.2 84% 4.9%;
-          }
-          
-          * {
-            box-sizing: border-box;
-          }
-          
-          body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background-color: hsl(var(--background));
-            color: hsl(var(--foreground));
-          }
-          EOF
+          # Create basic app content
+          cat > App.tsx << 'EOF'
+          import React from 'react';
+          import {SafeAreaView, Text, StyleSheet, TouchableOpacity, Alert} from 'react-native';
 
-      - name: Create React Components and App Structure
-        script: |
-          echo "=== Creating utility functions ==="
-          cat > src/lib/utils.ts << 'EOF'
-          import { type ClassValue, clsx } from "clsx"
-          
-          export function cn(...inputs: ClassValue[]) {
-            return clsx(inputs)
-          }
-          EOF
-          
-          echo "=== Creating UI components ==="
-          cat > src/components/ui/button.tsx << 'EOF'
-          import * as React from "react"
-          
-          export const Button = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-            ({ className, ...props }, ref) => (
-              <button
-                ref={ref}
-                className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 ${className}`}
-                {...props}
-              />
-            )
-          )
-          Button.displayName = "Button"
-          EOF
-          
-          cat > src/components/ui/card.tsx << 'EOF'
-          import * as React from "react"
-          
-          export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-            ({ className, ...props }, ref) => (
-              <div ref={ref} className={`rounded-lg border bg-white p-6 shadow-sm ${className}`} {...props} />
-            )
-          )
-          Card.displayName = "Card"
-          
-          export const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-            ({ className, ...props }, ref) => (
-              <div ref={ref} className={`flex flex-col space-y-1.5 pb-6 ${className}`} {...props} />
-            )
-          )
-          CardHeader.displayName = "CardHeader"
-          
-          export const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-            ({ className, ...props }, ref) => (
-              <h3 ref={ref} className={`text-2xl font-semibold leading-none tracking-tight ${className}`} {...props} />
-            )
-          )
-          CardTitle.displayName = "CardTitle"
-          
-          export const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-            ({ className, ...props }, ref) => (
-              <div ref={ref} className={`${className}`} {...props} />
-            )
-          )
-          CardContent.displayName = "CardContent"
-          EOF
-          
-          echo "=== Creating main App component ==="
-          cat > src/App.tsx << 'EOF'
-          import React from 'react'
-          import { Button } from './components/ui/button'
-          import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
-          import { ShoppingCart, Users, TrendingUp } from 'lucide-react'
-          import './index.css'
-          
-          function App() {
+          function App(): React.JSX.Element {
             return (
-              <div className="min-h-screen bg-gray-50">
-                <header className="bg-white shadow-sm border-b">
-                  <div className="max-w-4xl mx-auto px-4 py-6">
-                    <h1 className="text-3xl font-bold text-gray-900">OptiBuy</h1>
-                    <p className="text-gray-600 mt-2">Collective Purchasing Platform</p>
-                  </div>
-                </header>
-                
-                <main className="max-w-4xl mx-auto px-4 py-8">
-                  <div className="text-center mb-12">
-                    <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                      Discover Invisible Buying Neighbors
-                    </h2>
-                    <p className="text-xl text-gray-600 mb-8">
-                      Join collective purchases and unlock bulk pricing discounts
-                    </p>
-                    <Button size="lg" className="text-lg px-8 py-3">
-                      Get Started Today
-                    </Button>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-3 gap-8 mb-12">
-                    <Card>
-                      <CardHeader>
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                          <ShoppingCart className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <CardTitle>Smart Purchasing</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-gray-600">
-                          Create purchase intentions and discover when others need the same items
-                        </p>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                          <Users className="w-6 h-6 text-green-600" />
-                        </div>
-                        <CardTitle>Collective Power</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-gray-600">
-                          Join forces with other buyers to negotiate better prices through volume
-                        </p>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardHeader>
-                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                          <TrendingUp className="w-6 h-6 text-purple-600" />
-                        </div>
-                        <CardTitle>Market Analytics</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-gray-600">
-                          Access real-time market demand data to make informed purchasing decisions
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  <div className="bg-blue-50 rounded-xl p-8 text-center">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                      Ready to Save with Collective Purchasing?
-                    </h3>
-                    <p className="text-gray-600 mb-6">
-                      Join thousands of smart buyers who save money through strategic bulk purchasing
-                    </p>
-                    <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-                      Start Saving Now
-                    </Button>
-                  </div>
-                </main>
-                
-                <footer className="bg-white border-t mt-16">
-                  <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-                    <p className="text-gray-500">
-                      © 2025 OptiBuy. Collective purchasing platform for smarter buying decisions.
-                    </p>
-                  </div>
-                </footer>
-              </div>
-            )
+              <SafeAreaView style={styles.container}>
+                <Text style={styles.title}>OptiBuy</Text>
+                <Text style={styles.subtitle}>Collective Purchasing Platform</Text>
+                <Text style={styles.description}>
+                  Discover invisible buying neighbors for bulk discounts
+                </Text>
+                <TouchableOpacity 
+                  style={styles.button}
+                  onPress={() => Alert.alert('Welcome', 'Welcome to OptiBuy!')}
+                >
+                  <Text style={styles.buttonText}>Get Started</Text>
+                </TouchableOpacity>
+              </SafeAreaView>
+            );
           }
-          
-          export default App
-          EOF
-          
-          echo "=== Creating main.tsx ==="
-          cat > src/main.tsx << 'EOF'
-          import React from 'react'
-          import ReactDOM from 'react-dom/client'
-          import App from './App'
-          
-          ReactDOM.createRoot(document.getElementById('root')!).render(
-            <React.StrictMode>
-              <App />
-            </React.StrictMode>
-          )
-          EOF
-          
-          # Create vite.config.js
-          cat > vite.config.js << 'EOF'
-          import { defineConfig } from 'vite'
-          import react from '@vitejs/plugin-react'
-          
-          export default defineConfig({
-            plugins: [react()],
-            build: {
-              outDir: 'dist'
-            }
-          })
-          EOF
-          
-          # Create postcss.config.js
-          cat > postcss.config.js << 'EOF'
-          export default {
-            plugins: {
-              tailwindcss: {},
-              autoprefixer: {},
+
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: '#f5f5f5',
+              padding: 20,
             },
-          }
-          EOF
-          
-          # Create tailwind.config.js
-          cat > tailwind.config.js << 'EOF'
-          /** @type {import('tailwindcss').Config} */
-          export default {
-            content: [
-              "./index.html",
-              "./src/**/*.{js,ts,jsx,tsx}",
-            ],
-            theme: {
-              extend: {},
+            title: {
+              fontSize: 32,
+              fontWeight: 'bold',
+              color: '#333',
+              marginBottom: 10,
             },
-            plugins: [],
-          }
-          EOF
-          
-          # Create tsconfig.json for Capacitor
-          cat > tsconfig.json << 'EOF'
-          {
-            "compilerOptions": {
-              "target": "ES2020",
-              "useDefineForClassFields": true,
-              "lib": ["ES2020", "DOM", "DOM.Iterable"],
-              "module": "ESNext",
-              "skipLibCheck": true,
-              "moduleResolution": "bundler",
-              "allowImportingTsExtensions": true,
-              "resolveJsonModule": true,
-              "isolatedModules": true,
-              "noEmit": true,
-              "jsx": "react-jsx",
-              "strict": true,
-              "noUnusedLocals": true,
-              "noUnusedParameters": true,
-              "noFallthroughCasesInSwitch": true
+            subtitle: {
+              fontSize: 18,
+              color: '#666',
+              marginBottom: 20,
             },
-            "include": ["src"],
-            "references": [{ "path": "./tsconfig.node.json" }]
-          }
+            description: {
+              fontSize: 16,
+              color: '#888',
+              textAlign: 'center',
+              marginBottom: 30,
+            },
+            button: {
+              backgroundColor: '#007AFF',
+              paddingHorizontal: 30,
+              paddingVertical: 15,
+              borderRadius: 8,
+            },
+            buttonText: {
+              color: 'white',
+              fontSize: 18,
+              fontWeight: '600',
+            },
+          });
+
+          export default App;
           EOF
 
-      - name: Build and Setup Capacitor
+      - name: Setup Android Build
         script: |
-          echo "=== Installing dependencies ==="
-          npm install
+          cd OptiBuy
           
-          echo "=== Building React app ==="
-          npm run build
-          ls -la dist/
+          echo "=== Setting up Android build with Java 17 ==="
           
-          echo "=== Installing Capacitor (compatible version) ==="
-          npm install @capacitor/core@5.7.8 @capacitor/cli@5.7.8 @capacitor/android@5.7.8
+          # Update package name in Android config
+          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/build.gradle
+          sed -i 's/com.optibuy/com.optibuy.collective/g' android/app/src/main/AndroidManifest.xml
           
-          echo "=== Initialize Capacitor ==="
-          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
+          # Force Java 17 in all gradle files
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_.*)/JavaVersion.VERSION_17)/g' {} \;
+          find android -name "build.gradle" -exec sed -i 's/jvmTarget.*=.*/jvmTarget = "17"/g' {} \;
           
-          echo "=== Add Android platform ==="
-          npx cap add android
-          
-          echo "=== Fix Java compatibility in all Gradle files ==="
-          
-          # Fix app build.gradle - replace existing compileOptions
-          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
-          cat >> android/app/build.gradle << 'EOF'
-
-          android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          }
-          EOF
-          
-          # Fix project build.gradle
-          sed -i 's/classpath.*com.android.tools.build:gradle.*/classpath "com.android.tools.build:gradle:8.5.2"/' android/build.gradle
-          
-          # Set global gradle properties for Java 17
+          # Set gradle properties
           cat >> android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
           org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           EOF
           
-          echo "=== Create custom capacitor.config.ts with Java 17 ==="
-          cat > capacitor.config.ts << 'EOF'
-          import { CapacitorConfig } from '@capacitor/cli';
+          # Create keystore
+          echo "=== Creating keystore ==="
+          keytool -genkey -v -keystore android/app/optibuy.keystore -alias optibuy -keyalg RSA -keysize 2048 -validity 10000 -storepass anyque123 -keypass anyque123 -dname "CN=OptiBuy, O=OptiBuy, C=TR"
+          
+          # Configure signing
+          cat >> android/app/build.gradle << 'EOF'
 
-          const config: CapacitorConfig = {
-            appId: 'com.optibuy.collective',
-            appName: 'OptiBuy',
-            webDir: 'dist',
-            android: {
-              buildOptions: {
-                keystorePath: undefined,
-                keystorePassword: undefined,
-                keystoreAlias: undefined,
-                keystoreAliasPassword: undefined,
-                releaseType: 'AAB'
-              }
-            }
-          };
-
-          export default config;
-          EOF
-          
-          echo "=== Sync web assets ==="
-          npx cap sync android
-          
-          echo "=== Verify Java configuration fixes ==="
-          echo "Checking all build.gradle files for Java version:"
-          find android -name "build.gradle" -exec grep -l "JavaVersion\|sourceCompatibility\|targetCompatibility" {} \; | while read file; do
-            echo "--- $file ---"
-            grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
-          done
-
-      - name: Configure debug keystore for Google Play Console
-        script: |
-          cd android
-          
-          # Create debug keystore
-          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
-          
-          # Configure debug signing (Google Play Console managed signing compatible)
-          cat >> app/build.gradle << 'EOF'
-          
           android {
               signingConfigs {
-                  debug {
-                      storeFile file('../debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
+                  release {
+                      storeFile file('optibuy.keystore')
+                      storePassword 'anyque123'
+                      keyAlias 'optibuy'
+                      keyPassword 'anyque123'
                   }
               }
               buildTypes {
                   release {
-                      signingConfig signingConfigs.debug
+                      signingConfig signingConfigs.release
                   }
               }
           }
           EOF
 
-      - name: Set up local properties
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
       - name: Build AAB
         script: |
-          cd android
+          cd OptiBuy/android
           
-          # Set Java version explicitly
+          # Set Java 17 environment
           export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           export PATH=$JAVA_HOME/bin:$PATH
+          
+          echo "Java version:"
           java -version
           
-          echo "=== Update gradle wrapper ==="
-          # Update gradle wrapper to use compatible version
-          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties
-          
+          echo "=== Building AAB ==="
           chmod +x gradlew
-          echo "Building release bundle (Google Play Console managed signing compatible)..."
           ./gradlew clean
-          ./gradlew bundleRelease --no-daemon --stacktrace
+          ./gradlew bundleRelease
           
-          echo "Build completed. Checking output..."
-          ls -la app/build/outputs/bundle/release/
-          file app/build/outputs/bundle/release/app-release.aab
-          echo "Bundle file size: $(du -h app/build/outputs/bundle/release/app-release.aab)"
+          echo "=== Checking outputs ==="
+          find . -name "*.aab" -exec ls -lh {} \;
           
-          echo "Copying bundle for artifacts..."
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-v1.0.0.aab
-          ls -la ../optibuy-v1.0.0.aab
-          file ../optibuy-v1.0.0.aab
+          echo "=== Copying AAB ==="
+          cp app/build/outputs/bundle/release/app-release.aab ../../optibuy.aab
+          ls -lh ../../optibuy.aab
 
     artifacts:
-      - optibuy-v1.0.0.aab
-      - android/debug.keystore
-    publishing:
-      email:
-        recipients:
-          - your-metealper@gmail.com
-        notify:
-          success: true
-          failure: true
+      - optibuy.aab
