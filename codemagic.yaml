@@ -13,6 +13,7 @@ workflows:
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+      node: 18
     
     scripts:
       - name: Setup and Create React App
@@ -179,19 +180,66 @@ workflows:
           echo "=== Add Android platform ==="
           npx cap add android
           
-          echo "=== Fix Java compatibility in all Gradle files ==="
+          echo "=== Configure Android build like ANYQUE ==="
           
-          # Fix app build.gradle - replace existing compileOptions
-          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
+          # Fix app build.gradle with ANYQUE-style configuration
           cat >> android/app/build.gradle << 'EOF'
 
           android {
+              compileSdkVersion 34
+              
+              defaultConfig {
+                  targetSdkVersion 34
+                  minSdkVersion 21
+              }
+              
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
+              
+              signingConfigs {
+                  release {
+                      storeFile file('../upload.keystore')
+                      storePassword 'optibuy2025'
+                      keyAlias 'upload'
+                      keyPassword 'optibuy2025'
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled true
+                      shrinkResources true
+                      debuggable false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
           }
           EOF
+          
+          # Create proguard rules like ANYQUE
+          cat > android/app/proguard-rules.pro << 'EOF'
+          # Keep main activity
+          -keep public class * extends android.app.Activity
+          -keep public class * extends android.app.Application
+          -keep public class * extends android.app.Service
+          
+          # Keep React Native classes
+          -keep class com.facebook.react.** { *; }
+          -keep class com.facebook.hermes.** { *; }
+          
+          # Keep Capacitor classes
+          -keep class io.ionic.capacitor.** { *; }
+          
+          # Reduce warnings
+          -dontwarn java.lang.invoke.StringConcatFactory
+          EOF
+          
+          # Add permissions like ANYQUE
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' android/app/src/main/AndroidManifest.xml || true
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />' android/app/src/main/AndroidManifest.xml || true
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml || true
           
           # Fix all Capacitor gradle files after they're created
           find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
@@ -274,18 +322,24 @@ workflows:
           cat gradle/wrapper/gradle-wrapper.properties
           
           chmod +x gradlew
+          echo "Building properly signed release bundle like ANYQUE..."
           ./gradlew clean
-          ./gradlew bundleRelease
+          ./gradlew bundleRelease --no-daemon --stacktrace
           
-          echo "=== Check outputs ==="
-          find . -name "*.aab" -exec ls -lh {} \;
+          echo "Build completed. Checking output like ANYQUE..."
+          ls -la app/build/outputs/bundle/release/
+          file app/build/outputs/bundle/release/app-release.aab
+          echo "Bundle file size: $(du -h app/build/outputs/bundle/release/app-release.aab)"
           
-          echo "=== Copy AAB for Google Play Signing ==="
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-play-signing.aab
-          ls -lh ../optibuy-play-signing.aab
+          echo "Verify R8 obfuscation was applied:"
+          find . -name "mapping.txt" -type f
+          
+          echo "Copying bundle for artifacts like ANYQUE..."
+          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-v1.0.0-api34.aab
+          ls -la ../optibuy-v1.0.0-api34.aab
+          file ../optibuy-v1.0.0-api34.aab
 
     artifacts:
-      - optibuy-play-signing.aab
+      - optibuy-v1.0.0-api34.aab
       - upload_certificate.pem
       - upload.keystore
-      - android/app/build/outputs/bundle/release/app-release.aab
