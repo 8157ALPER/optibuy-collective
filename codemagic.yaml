@@ -324,7 +324,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - your-metealper@gmail.com
         notify:
           success: true
           failure: true
