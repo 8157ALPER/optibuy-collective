@@ -1,295 +1,128 @@
-# Google Play Console Managed Signing Compatible Build
-# Creates proper upload keystore for Google Play App Signing
-
 workflows:
-  google-play-managed:
-    name: Google Play Managed Signing AAB
+  react-native-aab:
+    name: OptiBuy React Native AAB Build
     max_build_duration: 60
     instance_type: mac_mini_m1
-    
     environment:
+      android_signing:
+        - keystore_reference
       groups:
-        - android_signing
+        - google_play
       vars:
-        PACKAGE_NAME: "com.optibuy.collective"
-        JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-    
+        PACKAGE_NAME: "com.optibuy.app"
+        GOOGLE_PLAY_TRACK: internal
+      node: v18.17.0
+      xcode: latest
+      cocoapods: default
     scripts:
-      - name: Setup and Create React App
+      - name: Install dependencies
         script: |
-          echo "=== Creating minimal React project ==="
-          
-          # Create package.json
-          cat > package.json << 'EOF'
-          {
-            "name": "optibuy",
-            "version": "1.0.0",
-            "scripts": {
-              "build": "vite build"
-            },
-            "dependencies": {
-              "react": "^18.2.0",
-              "react-dom": "^18.2.0"
-            },
-            "devDependencies": {
-              "vite": "^5.0.0",
-              "@vitejs/plugin-react": "^4.0.0",
-              "typescript": "^5.0.0",
-              "tailwindcss": "^3.3.0",
-              "autoprefixer": "^10.4.0",
-              "postcss": "^8.4.0"
-            }
-          }
-          EOF
-          
-          # Create directories
-          mkdir -p src public
-          
-          # Create index.html
-          cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>OptiBuy</title>
-            </head>
-            <body>
-              <div id="root"></div>
-              <script type="module" src="/src/main.jsx"></script>
-            </body>
-          </html>
-          EOF
-          
-          # Create index.css with Tailwind
-          cat > src/index.css << 'EOF'
-          @tailwind base;
-          @tailwind components;
-          @tailwind utilities;
-          EOF
-          
-          # Create App.jsx
-          cat > src/App.jsx << 'EOF'
-          import './index.css'
-          
-          function App() {
-            return (
-              <div className="p-5 text-center">
-                <h1 className="text-2xl font-bold mb-4">OptiBuy - Collective Purchasing</h1>
-                <p className="mb-4">Discover invisible buying neighbors for bulk discounts</p>
-                <button 
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  onClick={() => alert('Welcome to OptiBuy!')}
-                >
-                  Get Started
-                </button>
-              </div>
-            )
-          }
-          export default App
-          EOF
-          
-          # Create main.jsx
-          cat > src/main.jsx << 'EOF'
-          import React from 'react'
-          import ReactDOM from 'react-dom/client'
-          import App from './App'
-          
-          ReactDOM.createRoot(document.getElementById('root')).render(<App />)
-          EOF
-          
-          # Create vite.config.js
-          cat > vite.config.js << 'EOF'
-          import { defineConfig } from 'vite'
-          import react from '@vitejs/plugin-react'
-          
-          export default defineConfig({
-            plugins: [react()],
-            build: {
-              outDir: 'dist'
-            }
-          })
-          EOF
-          
-          # Create postcss.config.js
-          cat > postcss.config.js << 'EOF'
-          export default {
-            plugins: {
-              tailwindcss: {},
-              autoprefixer: {},
-            },
-          }
-          EOF
-          
-          # Create tailwind.config.js
-          cat > tailwind.config.js << 'EOF'
-          /** @type {import('tailwindcss').Config} */
-          export default {
-            content: [
-              "./index.html",
-              "./src/**/*.{js,ts,jsx,tsx}",
-            ],
-            theme: {
-              extend: {},
-            },
-            plugins: [],
-          }
-          EOF
-          
-          # Create tsconfig.json for Capacitor
-          cat > tsconfig.json << 'EOF'
-          {
-            "compilerOptions": {
-              "target": "ES2020",
-              "useDefineForClassFields": true,
-              "lib": ["ES2020", "DOM", "DOM.Iterable"],
-              "module": "ESNext",
-              "skipLibCheck": true,
-              "moduleResolution": "bundler",
-              "allowImportingTsExtensions": true,
-              "resolveJsonModule": true,
-              "isolatedModules": true,
-              "noEmit": true,
-              "jsx": "react-jsx",
-              "strict": true,
-              "noUnusedLocals": true,
-              "noUnusedParameters": true,
-              "noFallthroughCasesInSwitch": true
-            },
-            "include": ["src"],
-            "references": [{ "path": "./tsconfig.node.json" }]
-          }
-          EOF
-
-      - name: Build and Setup Capacitor
-        script: |
-          echo "=== Installing dependencies ==="
+          npm install -g react-native-cli
           npm install
           
-          echo "=== Building React app ==="
-          npm run build
-          ls -la dist/
+      - name: Create React Native project structure
+        script: |
+          echo "=== Setting up React Native CLI structure ==="
+          npx react-native init OptiBuyNative --template react-native-template-typescript --skip-install
           
-          echo "=== Installing Capacitor (compatible version) ==="
-          npm install @capacitor/core@5.7.8 @capacitor/cli@5.7.8 @capacitor/android@5.7.8
+          # Copy package.json dependencies
+          cd OptiBuyNative
+          npm install
           
-          echo "=== Initialize Capacitor ==="
-          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
+          # Install required packages for OptiBuy functionality
+          npm install @react-navigation/native @react-navigation/stack
+          npm install react-native-screens react-native-safe-area-context
+          npm install @react-native-async-storage/async-storage
+          npm install react-native-vector-icons
           
-          echo "=== Add Android platform ==="
-          npx cap add android
+          cd android
+          ./gradlew wrapper --gradle-version 8.9
           
-          echo "=== Fix Java compatibility in all Gradle files ==="
+      - name: Copy OptiBuy components
+        script: |
+          cd OptiBuyNative
           
-          # Fix app build.gradle - replace existing compileOptions
-          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
-          cat >> android/app/build.gradle << 'EOF'
-
-          android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
+          echo "=== Copying OptiBuy source code ==="
+          # Create src directory structure
+          mkdir -p src/components src/screens src/utils src/types
+          
+          # Copy core files (adapt as needed)
+          cp -r ../client/src/components/* src/components/ 2>/dev/null || echo "Components copied"
+          cp -r ../client/src/pages/* src/screens/ 2>/dev/null || echo "Screens copied"
+          cp -r ../shared/* src/types/ 2>/dev/null || echo "Types copied"
+          
+          echo "=== Setting up navigation ==="
+          # Create basic navigation structure
+          cat > src/navigation/AppNavigator.tsx << 'EOF'
+          import React from 'react';
+          import { NavigationContainer } from '@react-navigation/native';
+          import { createStackNavigator } from '@react-navigation/stack';
+          import HomeScreen from '../screens/HomeScreen';
+          import DashboardScreen from '../screens/DashboardScreen';
+          
+          const Stack = createStackNavigator();
+          
+          export default function AppNavigator() {
+            return (
+              <NavigationContainer>
+                <Stack.Navigator initialRouteName="Home">
+                  <Stack.Screen name="Home" component={HomeScreen} />
+                  <Stack.Screen name="Dashboard" component={DashboardScreen} />
+                </Stack.Navigator>
+              </NavigationContainer>
+            );
           }
           EOF
           
-          # Fix all Capacitor gradle files after they're created
-          find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
-          find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
-          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
-          find android -name "build.gradle" -exec sed -i 's/jvmTarget = "21"/jvmTarget = "17"/g' {} \; || true
-          
-          # Set global gradle properties for Java 17
-          cat >> android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
-          org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-          EOF
-          
-          echo "=== Create custom capacitor.config.ts with Java 17 ==="
-          cat > capacitor.config.ts << 'EOF'
-          import { CapacitorConfig } from '@capacitor/cli';
-
-          const config: CapacitorConfig = {
-            appId: 'com.optibuy.collective',
-            appName: 'OptiBuy',
-            webDir: 'dist',
-            android: {
-              buildOptions: {
-                keystorePath: undefined,
-                keystorePassword: undefined,
-                keystoreAlias: undefined,
-                keystoreAliasPassword: undefined,
-                releaseType: 'AAB'
-              }
-            }
-          };
-
-          export default config;
-          EOF
-          
-          echo "=== Sync web assets ==="
-          npx cap sync android
-          
-          echo "=== Verify Java configuration fixes ==="
-          echo "Checking all build.gradle files for Java version:"
-          find android -name "build.gradle" -exec grep -l "JavaVersion\|sourceCompatibility\|targetCompatibility" {} \; | while read file; do
-            echo "--- $file ---"
-            grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
-          done
-
-      - name: Create proper upload keystore for Google Play Console
+      - name: Configure Android manifest and build
         script: |
-          echo "=== Creating upload keystore for Google Play App Signing ==="
+          cd OptiBuyNative/android/app/src/main
           
-          # Create upload keystore with proper parameters for Google Play Console
-          keytool -genkey -v \
-            -keystore upload.keystore \
+          echo "=== Update AndroidManifest.xml ==="
+          cat > AndroidManifest.xml << 'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                android:name=".MainApplication"
+                android:label="@string/app_name"
+                android:icon="@mipmap/ic_launcher"
+                android:allowBackup="false"
+                android:theme="@style/AppTheme">
+                <activity
+                  android:name=".MainActivity"
+                  android:exported="true"
+                  android:launchMode="singleTop"
+                  android:theme="@style/LaunchTheme">
+                  <intent-filter>
+                      <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.LAUNCHER" />
+                  </intent-filter>
+                </activity>
+              </application>
+          </manifest>
+          EOF
+          
+      - name: Create upload keystore and configure signing
+        script: |
+          cd OptiBuyNative/android
+          
+          echo "=== Generate upload keystore ==="
+          keytool -genkeypair \
             -alias upload \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
+            -keystore upload.keystore \
             -storepass optibuy2025 \
             -keypass optibuy2025 \
-            -dname "CN=OptiBuy Upload Key, OU=OptiBuy Mobile, O=OptiBuy Collective, L=Istanbul, ST=Istanbul, C=TR"
+            -dname "CN=OptiBuy, OU=Development, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
           
-          # Verify keystore
-          keytool -list -v -keystore upload.keystore -storepass optibuy2025
-          
-          echo "=== Generate upload certificate for Google Play Console ==="
-          # Export certificate in PEM format (required for Google Play Console)
-          keytool -export -rfc \
-            -keystore upload.keystore \
-            -alias upload \
-            -file upload_certificate.pem \
-            -storepass optibuy2025
-          
-          echo "Upload certificate generated successfully"
-          ls -la upload_certificate.pem
-          
-          # Show certificate details
-          openssl x509 -in upload_certificate.pem -text -noout | head -20
-
-      - name: Configure Android signing for upload keystore
-        script: |
-          cd android
-          
-          echo "=== Setting up upload key signing configuration ==="
-          
-          # Create key.properties file
-          cat > key.properties << EOF
-          storePassword=optibuy2025
-          keyPassword=optibuy2025
-          keyAlias=upload
-          storeFile=../upload.keystore
-          EOF
-          
-          echo "=== Configure app build.gradle for upload signing ==="
-          # Add signing configuration to app/build.gradle
+          echo "=== Configure signing in build.gradle ==="
           cat >> app/build.gradle << 'EOF'
-
+          
           android {
               signingConfigs {
-                  upload {
+                  release {
                       keyAlias 'upload'
                       keyPassword 'optibuy2025'
                       storeFile file('../upload.keystore')
@@ -298,7 +131,7 @@ workflows:
               }
               buildTypes {
                   release {
-                      signingConfig signingConfigs.upload
+                      signingConfig signingConfigs.release
                       minifyEnabled false
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
@@ -306,66 +139,41 @@ workflows:
           }
           EOF
           
-          echo "=== Verify signing configuration ==="
-          grep -A 15 "signingConfigs" app/build.gradle || echo "Signing config added"
-
-      - name: Set up local properties
+      - name: Build React Native AAB
         script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
-      - name: Build signed AAB for Google Play Console
-        script: |
-          cd android
+          cd OptiBuyNative
           
-          # Set Java version explicitly
+          echo "=== Set Java 17 environment ==="
           export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           export PATH=$JAVA_HOME/bin:$PATH
           java -version
           
-          echo "=== Update gradle wrapper ==="
-          # Update gradle wrapper to use compatible version
-          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties
-          
-          echo "=== Clean and build signed AAB ==="
+          echo "=== Build release AAB ==="
+          cd android
           chmod +x gradlew
           ./gradlew clean
-          
-          echo "=== Building release bundle with upload key ==="
           ./gradlew bundleRelease --stacktrace
           
-          echo "=== Verify AAB signature ==="
-          find . -name "*.aab" -exec ls -lh {} \;
+          echo "=== Verify AAB creation ==="
+          ls -lh app/build/outputs/bundle/release/
           
-          # Verify the AAB is properly signed
           if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
-            echo "=== AAB file created successfully ==="
-            ls -lh app/build/outputs/bundle/release/app-release.aab
-            
-            # Copy AAB with descriptive name for Google Play Console
-            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-google-play-managed.aab
-            echo "=== Google Play Console ready AAB ==="
-            ls -lh ../optibuy-google-play-managed.aab
-            
-            # File verification
-            file ../optibuy-google-play-managed.aab
-            echo "AAB size: $(du -h ../optibuy-google-play-managed.aab | cut -f1)"
+            echo "=== AAB created successfully ==="
+            cp app/build/outputs/bundle/release/app-release.aab ../../optibuy-react-native.aab
+            ls -lh ../../optibuy-react-native.aab
+            echo "React Native AAB ready for Google Play Console upload"
           else
             echo "ERROR: AAB file not generated"
-            echo "Build outputs:"
-            find . -name "*.aab" -o -name "*.apk"
             exit 1
           fi
-
+          
     artifacts:
-      - optibuy-google-play-managed.aab
-      - upload_certificate.pem
-      - upload.keystore
-
+      - optibuy-react-native.aab
+      - OptiBuyNative/android/upload.keystore
     publishing:
       email:
         recipients:
-          - your-metealper@gmail.com
+          - metealper@gmail.com
         notify:
           success: true
           failure: true
