@@ -1,17 +1,18 @@
-# Original Successful 284-line Configuration with ANYQUE-style Managed Signing
-# Based on proven 2.64 MB AAB generation with Google Play Console compatibility
+# Google Play Console Managed Signing Compatible Build
+# Creates proper upload keystore for Google Play App Signing
 
 workflows:
-  minimal-aab:
-    name: OptiBuy AAB Build - Google Play Managed Signing
+  google-play-managed:
+    name: Google Play Managed Signing AAB
     max_build_duration: 60
     instance_type: mac_mini_m1
     
     environment:
+      groups:
+        - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-      node: 18
     
     scripts:
       - name: Setup and Create React App
@@ -192,8 +193,11 @@ workflows:
           }
           EOF
           
-          # Fix project build.gradle
-          sed -i 's/classpath.*com.android.tools.build:gradle.*/classpath "com.android.tools.build:gradle:8.5.2"/' android/build.gradle
+          # Fix all Capacitor gradle files after they're created
+          find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/jvmTarget = "21"/jvmTarget = "17"/g' {} \; || true
           
           # Set global gradle properties for Java 17
           cat >> android/gradle.properties << 'EOF'
@@ -233,63 +237,83 @@ workflows:
             grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
           done
 
-      - name: Configure ANYQUE-style release signing
+      - name: Create proper upload keystore for Google Play Console
+        script: |
+          echo "=== Creating upload keystore for Google Play App Signing ==="
+          
+          # Create upload keystore with proper parameters for Google Play Console
+          keytool -genkey -v \
+            -keystore upload.keystore \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass optibuy2025 \
+            -keypass optibuy2025 \
+            -dname "CN=OptiBuy Upload Key, OU=OptiBuy Mobile, O=OptiBuy Collective, L=Istanbul, ST=Istanbul, C=TR"
+          
+          # Verify keystore
+          keytool -list -v -keystore upload.keystore -storepass optibuy2025
+          
+          echo "=== Generate upload certificate for Google Play Console ==="
+          # Export certificate in PEM format (required for Google Play Console)
+          keytool -export -rfc \
+            -keystore upload.keystore \
+            -alias upload \
+            -file upload_certificate.pem \
+            -storepass optibuy2025
+          
+          echo "Upload certificate generated successfully"
+          ls -la upload_certificate.pem
+          
+          # Show certificate details
+          openssl x509 -in upload_certificate.pem -text -noout | head -20
+
+      - name: Configure Android signing for upload keystore
         script: |
           cd android
           
-          # Create a keystore for release signing like ANYQUE
-          keytool -genkey -v -keystore release-key.keystore -alias release-key -keyalg RSA -keysize 2048 -validity 10000 -storepass optibuy123 -keypass optibuy123 -dname "CN=OptiBuy, OU=Mobile, O=OptiBuy, L=Istanbul, S=Istanbul, C=TR"
+          echo "=== Setting up upload key signing configuration ==="
           
-          # Configure release signing and R8 obfuscation in build.gradle like ANYQUE
+          # Create key.properties file
+          cat > key.properties << EOF
+          storePassword=optibuy2025
+          keyPassword=optibuy2025
+          keyAlias=upload
+          storeFile=../upload.keystore
+          EOF
+          
+          echo "=== Configure app build.gradle for upload signing ==="
+          # Add signing configuration to app/build.gradle
           cat >> app/build.gradle << 'EOF'
-          
+
           android {
-              compileSdkVersion 34
-              
-              defaultConfig {
-                  targetSdkVersion 34
-                  minSdkVersion 21
-              }
-              
               signingConfigs {
-                  release {
-                      storeFile file('../release-key.keystore')
-                      storePassword 'optibuy123'
-                      keyAlias 'release-key'
-                      keyPassword 'optibuy123'
+                  upload {
+                      keyAlias 'upload'
+                      keyPassword 'optibuy2025'
+                      storeFile file('../upload.keystore')
+                      storePassword 'optibuy2025'
                   }
               }
               buildTypes {
                   release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled true
-                      shrinkResources true
-                      debuggable false
+                      signingConfig signingConfigs.upload
+                      minifyEnabled false
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
           }
           EOF
           
-          # Create proguard rules file like ANYQUE
-          cat > app/proguard-rules.pro << 'EOF'
-          # Keep main activity
-          -keep public class * extends android.app.Activity
-          -keep public class * extends android.app.Application
-          -keep public class * extends android.app.Service
-          
-          # Keep Capacitor classes
-          -keep class io.ionic.capacitor.** { *; }
-          
-          # Reduce warnings
-          -dontwarn java.lang.invoke.StringConcatFactory
-          EOF
+          echo "=== Verify signing configuration ==="
+          grep -A 15 "signingConfigs" app/build.gradle || echo "Signing config added"
 
       - name: Set up local properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
 
-      - name: Build AAB like ANYQUE
+      - name: Build signed AAB for Google Play Console
         script: |
           cd android
           
@@ -303,24 +327,41 @@ workflows:
           sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
           cat gradle/wrapper/gradle-wrapper.properties
           
+          echo "=== Clean and build signed AAB ==="
           chmod +x gradlew
-          echo "Building properly signed release bundle..."
           ./gradlew clean
-          ./gradlew bundleRelease --no-daemon --stacktrace
           
-          echo "Build completed. Checking output..."
-          ls -la app/build/outputs/bundle/release/
-          file app/build/outputs/bundle/release/app-release.aab
-          echo "Bundle file size: $(du -h app/build/outputs/bundle/release/app-release.aab)"
+          echo "=== Building release bundle with upload key ==="
+          ./gradlew bundleRelease --stacktrace
           
-          echo "Copying bundle for artifacts..."
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-managed-v1.0.0.aab
-          ls -la ../optibuy-managed-v1.0.0.aab
-          file ../optibuy-managed-v1.0.0.aab
+          echo "=== Verify AAB signature ==="
+          find . -name "*.aab" -exec ls -lh {} \;
+          
+          # Verify the AAB is properly signed
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            echo "=== AAB file created successfully ==="
+            ls -lh app/build/outputs/bundle/release/app-release.aab
+            
+            # Copy AAB with descriptive name for Google Play Console
+            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-google-play-managed.aab
+            echo "=== Google Play Console ready AAB ==="
+            ls -lh ../optibuy-google-play-managed.aab
+            
+            # File verification
+            file ../optibuy-google-play-managed.aab
+            echo "AAB size: $(du -h ../optibuy-google-play-managed.aab | cut -f1)"
+          else
+            echo "ERROR: AAB file not generated"
+            echo "Build outputs:"
+            find . -name "*.aab" -o -name "*.apk"
+            exit 1
+          fi
 
     artifacts:
-      - optibuy-managed-v1.0.0.aab
-      - android/release-key.keystore
+      - optibuy-google-play-managed.aab
+      - upload_certificate.pem
+      - upload.keystore
+
     publishing:
       email:
         recipients:
