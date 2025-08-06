@@ -1,28 +1,20 @@
-# BRUTAL FORCE AAB BUILD - Google Play Console Compatible
-# Addresses SHA1 fingerprint mismatch by generating consistent certificates
-# Push hard approach: Zero tolerance for signing failures
-
 workflows:
   optibuy-brutal-force:
     name: OptiBuy Brutal Force AAB Build
     max_build_duration: 90
     instance_type: mac_mini_m1
-    
     environment:
       groups:
         - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-        # Brutal force: Lock Java version to prevent compatibility issues
         GRADLE_USER_HOME: /tmp/.gradle
-    
     scripts:
       - name: Setup and Create React App
         script: |
           echo "=== Creating minimal React project ==="
           
-          # Create package.json
           cat > package.json << 'EOF'
           {
             "name": "optibuy",
@@ -45,10 +37,8 @@ workflows:
           }
           EOF
           
-          # Create directories
           mkdir -p src public
           
-          # Create index.html
           cat > index.html << 'EOF'
           <!DOCTYPE html>
           <html>
@@ -64,14 +54,12 @@ workflows:
           </html>
           EOF
           
-          # Create index.css with Tailwind
           cat > src/index.css << 'EOF'
           @tailwind base;
           @tailwind components;
           @tailwind utilities;
           EOF
           
-          # Create App.jsx
           cat > src/App.jsx << 'EOF'
           import './index.css'
           
@@ -92,7 +80,6 @@ workflows:
           export default App
           EOF
           
-          # Create main.jsx
           cat > src/main.jsx << 'EOF'
           import React from 'react'
           import ReactDOM from 'react-dom/client'
@@ -101,7 +88,6 @@ workflows:
           ReactDOM.createRoot(document.getElementById('root')).render(<App />)
           EOF
           
-          # Create vite.config.js
           cat > vite.config.js << 'EOF'
           import { defineConfig } from 'vite'
           import react from '@vitejs/plugin-react'
@@ -114,7 +100,6 @@ workflows:
           })
           EOF
           
-          # Create postcss.config.js
           cat > postcss.config.js << 'EOF'
           export default {
             plugins: {
@@ -124,47 +109,17 @@ workflows:
           }
           EOF
           
-          # Create tailwind.config.js
           cat > tailwind.config.js << 'EOF'
-          /** @type {import('tailwindcss').Config} */
           export default {
-            content: [
-              "./index.html",
-              "./src/**/*.{js,ts,jsx,tsx}",
-            ],
+            content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
             theme: {
               extend: {},
             },
             plugins: [],
           }
           EOF
-          
-          # Create tsconfig.json for Capacitor
-          cat > tsconfig.json << 'EOF'
-          {
-            "compilerOptions": {
-              "target": "ES2020",
-              "useDefineForClassFields": true,
-              "lib": ["ES2020", "DOM", "DOM.Iterable"],
-              "module": "ESNext",
-              "skipLibCheck": true,
-              "moduleResolution": "bundler",
-              "allowImportingTsExtensions": true,
-              "resolveJsonModule": true,
-              "isolatedModules": true,
-              "noEmit": true,
-              "jsx": "react-jsx",
-              "strict": true,
-              "noUnusedLocals": true,
-              "noUnusedParameters": true,
-              "noFallthroughCasesInSwitch": true
-            },
-            "include": ["src"],
-            "references": [{ "path": "./tsconfig.node.json" }]
-          }
-          EOF
 
-      - name: Build and Setup Capacitor
+      - name: Install dependencies and build web assets
         script: |
           echo "=== Installing dependencies ==="
           npm install
@@ -172,9 +127,11 @@ workflows:
           echo "=== Building React app ==="
           npm run build
           ls -la dist/
-          
-          echo "=== Installing Capacitor (compatible version) ==="
-          npm install @capacitor/core@5.7.8 @capacitor/cli@5.7.8 @capacitor/android@5.7.8
+
+      - name: Setup Capacitor for Android
+        script: |
+          echo "=== Installing Capacitor ==="
+          npm install @capacitor/core @capacitor/cli @capacitor/android
           
           echo "=== Initialize Capacitor ==="
           npx cap init OptiBuy com.optibuy.collective --web-dir=dist
@@ -183,8 +140,6 @@ workflows:
           npx cap add android
           
           echo "=== Fix Java compatibility in all Gradle files ==="
-          
-          # Fix app build.gradle - replace existing compileOptions
           sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
           cat >> android/app/build.gradle << 'EOF'
 
@@ -196,19 +151,15 @@ workflows:
           }
           EOF
           
-          # Fix all Capacitor gradle files after they're created
           find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
           find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
           find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
-          find android -name "build.gradle" -exec sed -i 's/jvmTarget = "21"/jvmTarget = "17"/g' {} \; || true
           
-          # Set global gradle properties for Java 17
           cat >> android/gradle.properties << 'EOF'
           org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
           org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           EOF
           
-          echo "=== Create custom capacitor.config.ts with Java 17 ==="
           cat > capacitor.config.ts << 'EOF'
           import { CapacitorConfig } from '@capacitor/cli';
 
@@ -232,22 +183,13 @@ workflows:
           
           echo "=== Sync web assets ==="
           npx cap sync android
-          
-          echo "=== Verify Java configuration fixes ==="
-          echo "Checking all build.gradle files for Java version:"
-          find android -name "build.gradle" -exec grep -l "JavaVersion\|sourceCompatibility\|targetCompatibility" {} \; | while read file; do
-            echo "--- $file ---"
-            grep -E "(JavaVersion|sourceCompatibility|targetCompatibility)" "$file" || true
-          done
 
       - name: BRUTAL FORCE - Generate Consistent Upload Keystore
         script: |
           echo "=== BRUTAL FORCE: Creating SHA1-consistent upload keystore ==="
           
-          # PUSH HARD: Remove any existing keystores to prevent conflicts
           rm -f upload.keystore upload_certificate.pem || true
           
-          # Generate deterministic keystore (same parameters = same fingerprint)
           keytool -genkeypair -v \
             -keystore upload.keystore \
             -alias upload \
@@ -282,11 +224,9 @@ workflows:
           
           echo "=== PUSH HARD: Configure upload key signing (zero failure tolerance) ==="
           
-          # BRUTAL: Remove any existing signing configs to prevent conflicts
           sed -i '/signingConfigs/,/}/d' app/build.gradle || true
           sed -i '/buildTypes/,/}/d' app/build.gradle || true
           
-          # Create bulletproof key.properties
           cat > key.properties << 'EOF'
           storePassword=optibuy2025
           keyPassword=optibuy2025
@@ -295,17 +235,14 @@ workflows:
           EOF
           
           echo "=== FORCE: Inject signing configuration into build.gradle ==="
-          # Insert signing config at the end of android block
           cat >> app/build.gradle << 'EOF'
           
-          // BRUTAL FORCE SIGNING CONFIGURATION
           signingConfigs {
               upload {
                   keyAlias 'upload'
                   keyPassword 'optibuy2025' 
                   storeFile file('../upload.keystore')
                   storePassword 'optibuy2025'
-                  // Force consistent signing
                   v1SigningEnabled true
                   v2SigningEnabled true
               }
@@ -316,14 +253,12 @@ workflows:
                   signingConfig signingConfigs.upload
                   minifyEnabled false
                   proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  // PUSH HARD: Force release optimizations
                   debuggable false
                   jniDebuggable false
                   renderscriptDebuggable false
                   pseudoLocalesEnabled false
               }
               debug {
-                  // Use same signing for consistency
                   signingConfig signingConfigs.upload
               }
           }
@@ -365,15 +300,12 @@ workflows:
             echo "=== SUCCESS: AAB BRUTALLY GENERATED ==="
             ls -lh app/build/outputs/bundle/release/app-release.aab
             
-            # Copy with descriptive name for Google Play Console
             cp app/build/outputs/bundle/release/app-release.aab ../optibuy-brutal-force.aab
             ls -lh ../optibuy-brutal-force.aab
             
             echo "=== VERIFY: AAB signature verification ==="
-            # Check if AAB is properly signed
             java -jar $ANDROID_SDK_ROOT/build-tools/*/lib/apksigner.jar verify ../optibuy-brutal-force.aab || echo "AAB verification completed"
             
-            # Extract and show certificate fingerprints from AAB
             echo "=== FINGERPRINT: Extract SHA1 from generated AAB ==="
             unzip -q ../optibuy-brutal-force.aab META-INF/BNDLTOOL.RSA -d temp_extract || true
             unzip -q ../optibuy-brutal-force.aab META-INF/BNDLTOOL.SF -d temp_extract || true
@@ -385,7 +317,7 @@ workflows:
             find . -name "*.aab" -o -name "*.apk" | head -10
             exit 1
           fi
-          
+
     artifacts:
       - optibuy-brutal-force.aab
       - upload_certificate.pem
@@ -397,8 +329,3 @@ workflows:
         notify:
           success: true
           failure: true
-
-      - name: Set up local properties
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
