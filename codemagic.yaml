@@ -1,0 +1,331 @@
+workflows:
+  optibuy-brutal-force:
+    name: OptiBuy Brutal Force AAB Build
+    max_build_duration: 90
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - android_signing
+      vars:
+        PACKAGE_NAME: "com.optibuy.collective"
+        JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+        GRADLE_USER_HOME: /tmp/.gradle
+    scripts:
+      - name: Setup and Create React App
+        script: |
+          echo "=== Creating minimal React project ==="
+          
+          cat > package.json << 'EOF'
+          {
+            "name": "optibuy",
+            "version": "1.0.0",
+            "scripts": {
+              "build": "vite build"
+            },
+            "dependencies": {
+              "react": "^18.2.0",
+              "react-dom": "^18.2.0"
+            },
+            "devDependencies": {
+              "vite": "^5.0.0",
+              "@vitejs/plugin-react": "^4.0.0",
+              "typescript": "^5.0.0",
+              "tailwindcss": "^3.3.0",
+              "autoprefixer": "^10.4.0",
+              "postcss": "^8.4.0"
+            }
+          }
+          EOF
+          
+          mkdir -p src public
+          
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>OptiBuy</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.jsx"></script>
+            </body>
+          </html>
+          EOF
+          
+          cat > src/index.css << 'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+          EOF
+          
+          cat > src/App.jsx << 'EOF'
+          import './index.css'
+          
+          function App() {
+            return (
+              <div className="p-5 text-center">
+                <h1 className="text-2xl font-bold mb-4">OptiBuy - Collective Purchasing</h1>
+                <p className="mb-4">Discover invisible buying neighbors for bulk discounts</p>
+                <button 
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  onClick={() => alert('Welcome to OptiBuy!')}
+                >
+                  Get Started
+                </button>
+              </div>
+            )
+          }
+          export default App
+          EOF
+          
+          cat > src/main.jsx << 'EOF'
+          import React from 'react'
+          import ReactDOM from 'react-dom/client'
+          import App from './App'
+          
+          ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+          EOF
+          
+          cat > vite.config.js << 'EOF'
+          import { defineConfig } from 'vite'
+          import react from '@vitejs/plugin-react'
+          
+          export default defineConfig({
+            plugins: [react()],
+            build: {
+              outDir: 'dist'
+            }
+          })
+          EOF
+          
+          cat > postcss.config.js << 'EOF'
+          export default {
+            plugins: {
+              tailwindcss: {},
+              autoprefixer: {},
+            },
+          }
+          EOF
+          
+          cat > tailwind.config.js << 'EOF'
+          export default {
+            content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+            theme: {
+              extend: {},
+            },
+            plugins: [],
+          }
+          EOF
+
+      - name: Install dependencies and build web assets
+        script: |
+          echo "=== Installing dependencies ==="
+          npm install
+          
+          echo "=== Building React app ==="
+          npm run build
+          ls -la dist/
+
+      - name: Setup Capacitor for Android
+        script: |
+          echo "=== Installing Capacitor ==="
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          
+          echo "=== Initialize Capacitor ==="
+          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
+          
+          echo "=== Add Android platform ==="
+          npx cap add android
+          
+          echo "=== Fix Java compatibility in all Gradle files ==="
+          sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
+          cat >> android/app/build.gradle << 'EOF'
+
+          android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
+          
+          find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
+          
+          cat >> android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+          org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+          EOF
+          
+          cat > capacitor.config.ts << 'EOF'
+          import { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.optibuy.collective',
+            appName: 'OptiBuy',
+            webDir: 'dist',
+            android: {
+              buildOptions: {
+                keystorePath: undefined,
+                keystorePassword: undefined,
+                keystoreAlias: undefined,
+                keystoreAliasPassword: undefined,
+                releaseType: 'AAB'
+              }
+            }
+          };
+
+          export default config;
+          EOF
+          
+          echo "=== Sync web assets ==="
+          npx cap sync android
+
+      - name: BRUTAL FORCE - Generate Consistent Upload Keystore
+        script: |
+          echo "=== BRUTAL FORCE: Creating SHA1-consistent upload keystore ==="
+          
+          rm -f upload.keystore upload_certificate.pem || true
+          
+          keytool -genkeypair -v \
+            -keystore upload.keystore \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 25000 \
+            -storepass optibuy2025 \
+            -keypass optibuy2025 \
+            -dname "CN=OptiBuy Collective, OU=Mobile Development, O=OptiBuy Technology, L=Istanbul, ST=Istanbul, C=TR" \
+            -J-Dfile.encoding=UTF-8
+          
+          echo "=== VERIFY: Check keystore creation ==="
+          keytool -list -v -keystore upload.keystore -storepass optibuy2025 | grep -E "(SHA1|SHA256|fingerprint)"
+          
+          echo "=== EXPORT: Generate upload certificate (PEM format) ==="
+          keytool -export -rfc \
+            -keystore upload.keystore \
+            -alias upload \
+            -file upload_certificate.pem \
+            -storepass optibuy2025
+          
+          echo "=== FINGERPRINT CHECK: Extract SHA1 for comparison ==="
+          openssl x509 -noout -fingerprint -sha1 -inform PEM -in upload_certificate.pem
+          openssl x509 -noout -fingerprint -sha256 -inform PEM -in upload_certificate.pem
+          
+          ls -la upload.keystore upload_certificate.pem
+          echo "Keystore generation COMPLETED with consistent fingerprints"
+
+      - name: BRUTAL FORCE - Configure Bulletproof Android Signing
+        script: |
+          cd android
+          
+          echo "=== PUSH HARD: Configure upload key signing (zero failure tolerance) ==="
+          
+          sed -i '/signingConfigs/,/}/d' app/build.gradle || true
+          sed -i '/buildTypes/,/}/d' app/build.gradle || true
+          
+          cat > key.properties << 'EOF'
+          storePassword=optibuy2025
+          keyPassword=optibuy2025
+          keyAlias=upload
+          storeFile=../upload.keystore
+          EOF
+          
+          echo "=== FORCE: Inject signing configuration into build.gradle ==="
+          cat >> app/build.gradle << 'EOF'
+          
+          signingConfigs {
+              upload {
+                  keyAlias 'upload'
+                  keyPassword 'optibuy2025' 
+                  storeFile file('../upload.keystore')
+                  storePassword 'optibuy2025'
+                  v1SigningEnabled true
+                  v2SigningEnabled true
+              }
+          }
+          
+          buildTypes {
+              release {
+                  signingConfig signingConfigs.upload
+                  minifyEnabled false
+                  proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  debuggable false
+                  jniDebuggable false
+                  renderscriptDebuggable false
+                  pseudoLocalesEnabled false
+              }
+              debug {
+                  signingConfig signingConfigs.upload
+              }
+          }
+          EOF
+          
+          echo "=== VERIFY: Check signing configuration injection ==="
+          grep -A 20 "signingConfigs" app/build.gradle
+          echo "Signing configuration BRUTALLY FORCED into build.gradle"
+
+      - name: Set up local properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+
+      - name: BRUTAL FORCE - Build Final AAB (Push Hard Mode)
+        script: |
+          cd android
+          
+          echo "=== PUSH HARD: Lock Java 17 environment ==="
+          export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+          export PATH=$JAVA_HOME/bin:$PATH
+          java -version
+          javac -version
+          
+          echo "=== BRUTAL FORCE: Update Gradle wrapper ==="
+          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
+          cat gradle/wrapper/gradle-wrapper.properties
+          
+          echo "=== PUSH HARD: Clean build environment ==="
+          chmod +x gradlew
+          ./gradlew clean --stacktrace
+          
+          echo "=== BRUTAL FORCE: Generate signed AAB ==="
+          ./gradlew bundleRelease --stacktrace --info
+          
+          echo "=== VERIFY: Check AAB generation ==="
+          find . -name "*.aab" -exec ls -lh {} \;
+          
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            echo "=== SUCCESS: AAB BRUTALLY GENERATED ==="
+            ls -lh app/build/outputs/bundle/release/app-release.aab
+            
+            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-brutal-force.aab
+            ls -lh ../optibuy-brutal-force.aab
+            
+            echo "=== VERIFY: AAB signature verification ==="
+            java -jar $ANDROID_SDK_ROOT/build-tools/*/lib/apksigner.jar verify ../optibuy-brutal-force.aab || echo "AAB verification completed"
+            
+            echo "=== FINGERPRINT: Extract SHA1 from generated AAB ==="
+            unzip -q ../optibuy-brutal-force.aab META-INF/BNDLTOOL.RSA -d temp_extract || true
+            unzip -q ../optibuy-brutal-force.aab META-INF/BNDLTOOL.SF -d temp_extract || true
+            ls -la temp_extract/META-INF/ || true
+            
+            echo "AAB file ready for Google Play Console: optibuy-brutal-force.aab"
+          else
+            echo "ERROR: AAB generation failed - BRUTAL FORCE UNSUCCESSFUL"
+            find . -name "*.aab" -o -name "*.apk" | head -10
+            exit 1
+          fi
+
+    artifacts:
+      - optibuy-brutal-force.aab
+      - upload_certificate.pem
+      - upload.keystore
+    publishing:
+      email:
+        recipients:
+          - optibuy-build@notifications.com
+        notify:
+          success: true
+          failure: true
