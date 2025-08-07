@@ -1,5 +1,5 @@
 workflows:
-  optibuy-corruption-fix:
+  optibuy:
     name: OptiBuy AAB Corruption Fix Build
     max_build_duration: 90
     instance_type: mac_mini_m1
