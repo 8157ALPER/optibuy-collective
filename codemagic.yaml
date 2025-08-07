@@ -1,6 +1,6 @@
 workflows:
-  optibuy-enhanced:
-    name: OptiBuy Enhanced AAB Build
+  optibuy-corruption-fix:
+    name: OptiBuy AAB Corruption Fix Build
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -11,9 +11,9 @@ workflows:
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
         GRADLE_USER_HOME: /tmp/.gradle
     scripts:
-      - name: Setup and Create React App
+      - name: Setup React Application
         script: |
-          echo "=== Creating minimal React project ==="
+          echo "=== Creating React project ==="
           
           cat > package.json << 'EOF'
           {
@@ -45,7 +45,7 @@ workflows:
             <head>
               <meta charset="UTF-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>OptiBuy</title>
+              <title>OptiBuy - Collective Purchasing</title>
             </head>
             <body>
               <div id="root"></div>
@@ -58,6 +58,12 @@ workflows:
           @tailwind base;
           @tailwind components;
           @tailwind utilities;
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+          }
           EOF
           
           cat > src/App.jsx << 'EOF'
@@ -65,15 +71,45 @@ workflows:
           
           function App() {
             return (
-              <div className="p-5 text-center">
-                <h1 className="text-2xl font-bold mb-4">OptiBuy - Collective Purchasing</h1>
-                <p className="mb-4">Discover invisible buying neighbors for bulk discounts</p>
-                <button 
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                  onClick={() => alert('Welcome to OptiBuy!')}
-                >
-                  Get Started
-                </button>
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+                <div className="container mx-auto px-4 py-8">
+                  <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-4">OptiBuy</h1>
+                    <p className="text-xl text-gray-600 mb-6">Collective Purchasing Platform</p>
+                    <p className="text-lg text-gray-700 mb-8">Discover invisible buying neighbors for bulk discounts</p>
+                  </div>
+                  
+                  <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+                    <h2 className="text-2xl font-semibold text-center mb-6">Welcome to OptiBuy</h2>
+                    
+                    <div className="space-y-4">
+                      <button 
+                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200"
+                        onClick={() => alert('Consumer Dashboard - Coming Soon!')}
+                      >
+                        Consumer Dashboard
+                      </button>
+                      
+                      <button 
+                        className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition duration-200"
+                        onClick={() => alert('Seller Dashboard - Coming Soon!')}
+                      >
+                        Seller Dashboard
+                      </button>
+                      
+                      <button 
+                        className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition duration-200"
+                        onClick={() => alert('B2B Portal - Coming Soon!')}
+                      >
+                        B2B Portal
+                      </button>
+                    </div>
+                    
+                    <div className="mt-6 text-center">
+                      <p className="text-sm text-gray-500">Join collective purchases and save money</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )
           }
@@ -95,7 +131,10 @@ workflows:
           export default defineConfig({
             plugins: [react()],
             build: {
-              outDir: 'dist'
+              outDir: 'dist',
+              assetsDir: 'assets',
+              sourcemap: false,
+              minify: 'esbuild'
             }
           })
           EOF
@@ -119,36 +158,48 @@ workflows:
           }
           EOF
 
-      - name: Install dependencies and build web assets
+      - name: Build and Verify React Assets
         script: |
           echo "=== Installing dependencies ==="
           npm install
           
-          echo "=== Building React app ==="
+          echo "=== Building React application ==="
           npm run build
           
-          # VERIFY BUILD SUCCESS
+          # STRICT VERIFICATION
           if [ ! -d "dist" ]; then
-            echo "ERROR: React build failed - dist directory missing"
+            echo "FATAL: React build failed - dist directory missing"
             exit 1
           fi
           
+          if [ ! -f "dist/index.html" ]; then
+            echo "FATAL: React build incomplete - index.html missing"
+            exit 1
+          fi
+          
+          echo "=== BUILD VERIFICATION PASSED ==="
           ls -la dist/
-          echo "✅ React build verified successfully"
+          du -sh dist/
+          echo "React build completed successfully"
 
-      - name: Setup Capacitor for Android
+      - name: Initialize Capacitor with Clean Configuration
         script: |
           echo "=== Installing Capacitor ==="
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
-          echo "=== Initialize Capacitor ==="
+          echo "=== Clean Capacitor initialization ==="
           npx cap init OptiBuy com.optibuy.collective --web-dir=dist
           
           echo "=== Add Android platform ==="
           npx cap add android
           
-          echo "=== Fix Java compatibility in all Gradle files ==="
+          # CLEAN JAVA CONFIGURATION
+          echo "=== Configure Java 17 compatibility ==="
+          
+          # Remove any existing compile options
           sed -i '/compileOptions/,/}/d' android/app/build.gradle || true
+          
+          # Add clean Java 17 configuration
           cat >> android/app/build.gradle << 'EOF'
 
           android {
@@ -156,18 +207,27 @@ workflows:
                   sourceCompatibility JavaVersion.VERSION_17
                   targetCompatibility JavaVersion.VERSION_17
               }
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
           }
           EOF
           
-          find android -name "build.gradle" -exec sed -i 's/sourceCompatibility = 21/sourceCompatibility = 17/g' {} \; || true
-          find android -name "build.gradle" -exec sed -i 's/targetCompatibility = 21/targetCompatibility = 17/g' {} \; || true
-          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \; || true
+          # Update all Gradle files for Java 17
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' {} \;
+          find android -name "build.gradle" -exec sed -i 's/JavaVersion.VERSION_11/JavaVersion.VERSION_17/g' {} \;
           
-          cat >> android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+          # Clean Gradle properties
+          cat > android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1g
           org.gradle.java.home=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.parallel=true
+          org.gradle.configureondemand=true
           EOF
           
+          # Clean Capacitor configuration
           cat > capacitor.config.ts << 'EOF'
           import { CapacitorConfig } from '@capacitor/cli';
 
@@ -175,12 +235,9 @@ workflows:
             appId: 'com.optibuy.collective',
             appName: 'OptiBuy',
             webDir: 'dist',
+            bundledWebRuntime: false,
             android: {
               buildOptions: {
-                keystorePath: undefined,
-                keystorePassword: undefined,
-                keystoreAlias: undefined,
-                keystoreAliasPassword: undefined,
                 releaseType: 'AAB'
               }
             }
@@ -189,165 +246,191 @@ workflows:
           export default config;
           EOF
           
-          echo "=== Sync web assets ==="
-          npx cap sync android
+          echo "=== Sync web assets to Android ==="
+          npx cap sync android --no-deps
           
-          # VERIFY SYNC SUCCESS
-          if [ ! -f "android/app/src/main/assets/public/index.html" ]; then
-            echo "WARNING: Capacitor sync may have issues"
-            ls -la android/app/src/main/assets/ || true
-          else
-            echo "✅ Capacitor sync verified successfully"
+          # VERIFY CAPACITOR SYNC
+          if [ ! -d "android/app/src/main/assets/public" ]; then
+            echo "WARNING: Capacitor sync incomplete"
+            npx cap copy android
           fi
+          
+          echo "=== CAPACITOR SETUP COMPLETED ==="
+          ls -la android/app/src/main/assets/public/
 
-      - name: Generate Consistent Upload Keystore
+      - name: Generate Clean Production Keystore
         script: |
-          echo "=== Creating SHA1-consistent upload keystore ==="
+          echo "=== Creating production-grade keystore ==="
           
-          rm -f upload.keystore upload_certificate.pem release-key.keystore || true
+          # Remove any existing keystores
+          rm -f *.keystore *.pem || true
           
+          # Generate production keystore with consistent parameters
           keytool -genkeypair -v \
-            -keystore upload.keystore \
-            -alias upload \
+            -keystore release.keystore \
+            -alias optibuy \
             -keyalg RSA \
             -keysize 2048 \
             -validity 25000 \
-            -storepass optibuy2025 \
-            -keypass optibuy2025 \
-            -dname "CN=OptiBuy Collective, OU=Mobile Development, O=OptiBuy Technology, L=Istanbul, ST=Istanbul, C=TR" \
-            -J-Dfile.encoding=UTF-8
+            -storepass optibuySecure2025 \
+            -keypass optibuySecure2025 \
+            -dname "CN=OptiBuy Collective, OU=Mobile Development, O=OptiBuy Technology, L=Istanbul, ST=Istanbul, C=TR, emailAddress=dev@optibuy.com" \
+            -ext SAN=dns:optibuy.com,dns:www.optibuy.com
           
-          # Also create release-key for compatibility
-          cp upload.keystore release-key.keystore
-          
-          echo "=== VERIFY: Check keystore creation ==="
-          keytool -list -v -keystore upload.keystore -storepass optibuy2025 | grep -E "(SHA1|SHA256|fingerprint)"
-          
-          echo "=== EXPORT: Generate upload certificate (PEM format) ==="
-          keytool -export -rfc \
-            -keystore upload.keystore \
-            -alias upload \
-            -file upload_certificate.pem \
-            -storepass optibuy2025
-          
-          echo "=== FINGERPRINT CHECK: Extract SHA1 for comparison ==="
-          openssl x509 -noout -fingerprint -sha1 -inform PEM -in upload_certificate.pem
-          openssl x509 -noout -fingerprint -sha256 -inform PEM -in upload_certificate.pem
-          
-          ls -la upload.keystore upload_certificate.pem release-key.keystore
-          echo "✅ Keystore generation COMPLETED with consistent fingerprints"
-
-      - name: Configure Android Signing
-        script: |
-          cd android
-          
-          echo "=== Configure upload key signing ==="
-          
-          sed -i '/signingConfigs/,/}/d' app/build.gradle || true
-          sed -i '/buildTypes/,/}/d' app/build.gradle || true
-          
-          cat > key.properties << 'EOF'
-          storePassword=optibuy2025
-          keyPassword=optibuy2025
-          keyAlias=upload
-          storeFile=../upload.keystore
-          EOF
-          
-          echo "=== Inject signing configuration into build.gradle ==="
-          cat >> app/build.gradle << 'EOF'
-          
-          signingConfigs {
-              upload {
-                  keyAlias 'upload'
-                  keyPassword 'optibuy2025' 
-                  storeFile file('../upload.keystore')
-                  storePassword 'optibuy2025'
-                  v1SigningEnabled true
-                  v2SigningEnabled true
-              }
-          }
-          
-          buildTypes {
-              release {
-                  signingConfig signingConfigs.upload
-                  minifyEnabled false
-                  proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  debuggable false
-                  jniDebuggable false
-                  renderscriptDebuggable false
-                  pseudoLocalesEnabled false
-              }
-              debug {
-                  signingConfig signingConfigs.upload
-              }
-          }
-          EOF
-          
-          echo "=== VERIFY: Check signing configuration injection ==="
-          grep -A 20 "signingConfigs" app/build.gradle
-          echo "✅ Signing configuration injected successfully"
-
-      - name: Set up local properties
-        script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
-
-      - name: ENHANCED - Build AAB with Comprehensive Error Handling
-        script: |
-          cd android
-          
-          echo "=== Lock Java 17 environment ==="
-          export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-          export PATH=$JAVA_HOME/bin:$PATH
-          java -version
-          javac -version
-          
-          echo "=== Update Gradle wrapper ==="
-          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
-          cat gradle/wrapper/gradle-wrapper.properties
-          
-          echo "=== Clean build environment ==="
-          chmod +x gradlew
-          ./gradlew clean --stacktrace
-          
-          echo "=== PRIMARY: Attempt release AAB build ==="
-          if ./gradlew bundleRelease --stacktrace --info; then
-            echo "✅ Release build successful"
-          else
-            echo "❌ Release build failed, trying debug build"
-            ./gradlew bundleDebug --stacktrace --info
-          fi
-          
-          echo "=== SEARCH: Find all generated AAB files ==="
-          find . -name "*.aab" -exec ls -lh {} \; | tee ../aab-search-results.txt
-          
-          # Copy the best available AAB file
-          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
-            echo "✅ Using release AAB"
-            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-enhanced.aab
-          elif [ -f "app/build/outputs/bundle/debug/app-debug.aab" ]; then
-            echo "⚠️ Using debug AAB (release failed)"
-            cp app/build/outputs/bundle/debug/app-debug.aab ../optibuy-enhanced.aab
-          else
-            echo "❌ No AAB files found anywhere"
-            find . -name "*.aab" -o -name "*.apk" | head -10
-            ls -la app/build/outputs/ || true
+          # Verify keystore creation
+          if [ ! -f "release.keystore" ]; then
+            echo "FATAL: Keystore generation failed"
             exit 1
           fi
           
-          ls -lh ../optibuy-enhanced.aab
+          echo "=== Keystore verification ==="
+          keytool -list -v -keystore release.keystore -storepass optibuySecure2025 | grep -E "(SHA1|SHA256|Alias|Creation)"
           
-          echo "=== VERIFY: AAB signature verification ==="
-          java -jar $ANDROID_SDK_ROOT/build-tools/*/lib/apksigner.jar verify ../optibuy-enhanced.aab || echo "AAB verification completed"
+          # Export certificate for Google Play
+          keytool -export -rfc \
+            -keystore release.keystore \
+            -alias optibuy \
+            -file upload_certificate.pem \
+            -storepass optibuySecure2025
           
-          echo "✅ AAB file ready: optibuy-enhanced.aab"
+          # Verify certificate
+          if [ ! -f "upload_certificate.pem" ]; then
+            echo "FATAL: Certificate export failed"
+            exit 1
+          fi
+          
+          echo "=== Certificate fingerprints ==="
+          openssl x509 -noout -fingerprint -sha1 -inform PEM -in upload_certificate.pem
+          openssl x509 -noout -fingerprint -sha256 -inform PEM -in upload_certificate.pem
+          
+          ls -la *.keystore *.pem
+          echo "Production keystore and certificate ready"
+
+      - name: Configure Android Signing with Clean Build
+        script: |
+          cd android
+          
+          echo "=== Clean signing configuration ==="
+          
+          # Remove any existing signing configurations
+          sed -i '/signingConfigs/,/}/d' app/build.gradle
+          sed -i '/buildTypes/,/}/d' app/build.gradle
+          
+          # Create clean key properties
+          cat > key.properties << 'EOF'
+          storePassword=optibuySecure2025
+          keyPassword=optibuySecure2025
+          keyAlias=optibuy
+          storeFile=../release.keystore
+          EOF
+          
+          # Add clean signing configuration to build.gradle
+          cat >> app/build.gradle << 'EOF'
+
+          def keystoreProperties = new Properties()
+          def keystorePropertiesFile = rootProject.file('key.properties')
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+          }
+
+          android {
+              signingConfigs {
+                  release {
+                      keyAlias keystoreProperties['keyAlias']
+                      keyPassword keystoreProperties['keyPassword']
+                      storeFile file(keystoreProperties['storeFile'])
+                      storePassword keystoreProperties['storePassword']
+                      v1SigningEnabled true
+                      v2SigningEnabled true
+                  }
+              }
+              
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                      shrinkResources false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                      debuggable false
+                      jniDebuggable false
+                      renderscriptDebuggable false
+                      pseudoLocalesEnabled false
+                      zipAlignEnabled true
+                  }
+              }
+          }
+          EOF
+          
+          echo "=== Verify signing configuration ==="
+          grep -A 30 "signingConfigs" app/build.gradle
+          echo "Clean signing configuration applied"
+
+      - name: Set Android SDK Properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+          echo "ndk.dir=$ANDROID_NDK_ROOT" >> "$CM_BUILD_DIR/android/local.properties"
+
+      - name: Build Production AAB with Corruption Prevention
+        script: |
+          cd android
+          
+          echo "=== Environment setup ==="
+          export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+          export PATH=$JAVA_HOME/bin:$PATH
+          export GRADLE_OPTS="-Xmx4g -XX:MaxMetaspaceSize=1g"
+          
+          java -version
+          echo "Java environment locked to version 17"
+          
+          echo "=== Gradle wrapper update ==="
+          sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
+          
+          echo "=== Clean build environment ==="
+          chmod +x gradlew
+          ./gradlew clean --no-daemon --stacktrace
+          
+          echo "=== Build production AAB ==="
+          ./gradlew bundleRelease --no-daemon --stacktrace --info
+          
+          echo "=== Verify AAB generation ==="
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            AAB_FILE="app/build/outputs/bundle/release/app-release.aab"
+            AAB_SIZE=$(ls -lh "$AAB_FILE" | awk '{print $5}')
+            
+            echo "SUCCESS: AAB generated successfully"
+            echo "File: $AAB_FILE"
+            echo "Size: $AAB_SIZE"
+            
+            # Verify AAB is not corrupted
+            if unzip -t "$AAB_FILE" > /dev/null 2>&1; then
+              echo "VERIFICATION: AAB file structure is valid"
+            else
+              echo "ERROR: AAB file is corrupted"
+              exit 1
+            fi
+            
+            # Copy with clean name
+            cp "$AAB_FILE" ../optibuy-clean.aab
+            
+            echo "=== AAB signature verification ==="
+            java -jar $ANDROID_SDK_ROOT/build-tools/*/lib/apksigner.jar verify ../optibuy-clean.aab
+            
+            echo "=== Final verification ==="
+            ls -lh ../optibuy-clean.aab
+            file ../optibuy-clean.aab
+            
+            echo "PRODUCTION AAB READY: optibuy-clean.aab"
+          else
+            echo "FATAL: AAB generation failed"
+            find . -name "*.aab" -o -name "*.apk"
+            ls -la app/build/outputs/
+            exit 1
+          fi
 
     artifacts:
-      - optibuy-enhanced.aab
+      - optibuy-clean.aab
       - upload_certificate.pem
-      - upload.keystore
-      - release-key.keystore
-      - aab-search-results.txt
-      - "**/*.aab"
+      - release.keystore
     publishing:
       email:
         recipients:
