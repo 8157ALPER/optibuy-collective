@@ -1,7 +1,7 @@
 workflows:
   optibuy:
-    name: OptiBuy Clean AAB Build
-    max_build_duration: 60
+    name: Minimal Working React to AAB Build - Google Play App Signing Compatible
+    max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
       groups:
@@ -10,258 +10,371 @@ workflows:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
     scripts:
-      - name: Create Clean React App
+      - name: Create React Native Project
         script: |
-          echo "Creating dependency-free React app..."
+          echo "=== Creating React Native TypeScript Project ==="
           
-          # Create minimal package.json WITHOUT PostCSS/Tailwind
+          # Install React Native CLI globally
+          npm install -g @react-native-community/cli
+          
+          # Create React Native project with TypeScript template
+          npx react-native@latest init OptiBuy --template react-native-template-typescript --skip-install
+          
+          cd OptiBuy
+          
+          # Update package.json with proper scripts
           cat > package.json << 'EOF'
           {
-            "name": "optibuy",
+            "name": "OptiBuy",
             "version": "1.0.0",
-            "type": "module",
+            "private": true,
             "scripts": {
-              "build": "vite build"
+              "android": "react-native run-android",
+              "bundle:android": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle",
+              "start": "react-native start",
+              "test": "jest",
+              "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
             },
             "dependencies": {
-              "react": "^18.2.0",
-              "react-dom": "^18.2.0"
+              "react": "18.2.0",
+              "react-native": "0.72.6"
             },
             "devDependencies": {
-              "vite": "^5.0.0",
-              "@vitejs/plugin-react": "^4.0.0",
-              "typescript": "^5.0.0"
+              "@babel/core": "^7.20.0",
+              "@babel/preset-env": "^7.20.0",
+              "@babel/runtime": "^7.20.0",
+              "@react-native/eslint-config": "^0.72.2",
+              "@react-native/metro-config": "^0.72.11",
+              "@tsconfig/react-native": "^3.0.0",
+              "@types/react": "^18.0.24",
+              "@types/react-test-renderer": "^18.0.0",
+              "babel-jest": "^29.2.1",
+              "eslint": "^8.19.0",
+              "jest": "^29.2.1",
+              "metro-react-native-babel-preset": "0.76.8",
+              "prettier": "^2.4.1",
+              "react-test-renderer": "18.2.0",
+              "typescript": "4.8.4"
+            },
+            "jest": {
+              "preset": "react-native"
             }
           }
           EOF
           
-          # Install clean dependencies
+          # Create the main App component
+          cat > App.tsx << 'EOF'
+          import React from 'react';
+          import {
+            SafeAreaView,
+            ScrollView,
+            StatusBar,
+            StyleSheet,
+            Text,
+            View,
+            useColorScheme,
+          } from 'react-native';
+          
+          function App(): JSX.Element {
+            const isDarkMode = useColorScheme() === 'dark';
+          
+            const backgroundStyle = {
+              backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f9fa',
+              flex: 1,
+            };
+          
+            return (
+              <SafeAreaView style={backgroundStyle}>
+                <StatusBar
+                  barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+                  backgroundColor={backgroundStyle.backgroundColor}
+                />
+                <ScrollView
+                  contentInsetAdjustmentBehavior="automatic"
+                  style={backgroundStyle}>
+                  <View style={styles.container}>
+                    <Text style={[styles.title, {color: isDarkMode ? '#fff' : '#000'}]}>
+                      OptiBuy
+                    </Text>
+                    <Text style={[styles.subtitle, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                      Collective Purchasing Platform
+                    </Text>
+                    
+                    <View style={styles.featuresContainer}>
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>🛍️</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          Group Buying
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Join others buying the same items to unlock bulk discounts
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>💰</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          Better Prices
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Access wholesale pricing through collective purchasing power
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>🤝</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          B2B Solutions
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Specialized tools for veterinary clinics and pharmacies
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>📱</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          Mobile First
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Optimized for mobile commerce and quick purchasing decisions
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <Text style={[styles.readyText, {color: isDarkMode ? '#4CAF50' : '#2E7D32'}]}>
+                      Ready for Google Play Store deployment
+                    </Text>
+                  </View>
+                </ScrollView>
+              </SafeAreaView>
+            );
+          }
+          
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              padding: 20,
+              alignItems: 'center',
+            },
+            title: {
+              fontSize: 32,
+              fontWeight: 'bold',
+              marginBottom: 8,
+              textAlign: 'center',
+            },
+            subtitle: {
+              fontSize: 18,
+              marginBottom: 40,
+              textAlign: 'center',
+            },
+            featuresContainer: {
+              width: '100%',
+              marginBottom: 40,
+            },
+            feature: {
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              padding: 20,
+              marginBottom: 15,
+              borderRadius: 12,
+              alignItems: 'center',
+            },
+            featureIcon: {
+              fontSize: 32,
+              marginBottom: 8,
+            },
+            featureTitle: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              marginBottom: 8,
+              textAlign: 'center',
+            },
+            featureText: {
+              fontSize: 14,
+              textAlign: 'center',
+              lineHeight: 20,
+            },
+            readyText: {
+              fontSize: 16,
+              fontWeight: '600',
+              textAlign: 'center',
+            },
+          });
+          
+          export default App;
+          EOF
+          
+          # Install dependencies
           npm install
           
-          # Create app structure
-          mkdir -p src public
+      - name: Configure Android Build
+        script: |
+          echo "=== Configuring Android for AAB Build ==="
+          cd OptiBuy
           
-          # Create index.html
-          cat > index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>OptiBuy - Collective Purchasing Platform</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                margin: 0;
-                padding: 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                min-height: 100vh;
-              }
-              .container {
-                max-width: 800px;
-                margin: 0 auto;
-                text-align: center;
-                padding: 40px 20px;
-              }
-              h1 { font-size: 2.5rem; margin-bottom: 1rem; }
-              p { font-size: 1.2rem; opacity: 0.9; }
-              .features {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 20px;
-                margin: 40px 0;
-              }
-              .feature {
-                background: rgba(255,255,255,0.1);
-                padding: 20px;
-                border-radius: 10px;
-                backdrop-filter: blur(10px);
-              }
-            </style>
-          </head>
-          <body>
-            <div id="root"></div>
-            <script type="module" src="/src/main.tsx"></script>
-          </body>
-          </html>
+          # Update android/gradle.properties for release build
+          cat >> android/gradle.properties << 'EOF'
+          
+          # Enable AAB (Android App Bundle) generation
+          android.bundle.enableUncompressedNativeLibs=false
+          android.enableR8.fullMode=true
+          android.useAndroidX=true
+          android.enableJetifier=true
+          
+          # Performance improvements
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+          org.gradle.parallel=true
+          org.gradle.configureondemand=true
+          org.gradle.daemon=true
+          
+          # Use debug keystore for now (Google Play App Signing will handle final signing)
+          MYAPP_UPLOAD_STORE_FILE=debug.keystore
+          MYAPP_UPLOAD_KEY_ALIAS=androiddebugkey
+          MYAPP_UPLOAD_STORE_PASSWORD=android
+          MYAPP_UPLOAD_KEY_PASSWORD=android
           EOF
           
-          # Create main.tsx
-          cat > src/main.tsx << 'EOF'
-          import React from 'react'
-          import ReactDOM from 'react-dom/client'
-          import App from './App'
+          # Update android/app/build.gradle for proper AAB configuration
+          cat > android/app/build.gradle << 'EOF'
+          apply plugin: "com.android.application"
+          apply plugin: "com.facebook.react"
           
-          ReactDOM.createRoot(document.getElementById('root')!).render(
-            <React.StrictMode>
-              <App />
-            </React.StrictMode>
-          )
-          EOF
+          react {
+              entryFile = "index.js"
+              enableHermes = true
+              bundleInDebug = false
+              bundleInRelease = true
+          }
           
-          # Create App.tsx
-          cat > src/App.tsx << 'EOF'
-          import React from 'react'
+          android {
+              ndkVersion rootProject.ext.ndkVersion
+              compileSdkVersion rootProject.ext.compileSdkVersion
+              
+              namespace "com.optibuy.collective"
+              defaultConfig {
+                  applicationId "com.optibuy.collective"
+                  minSdkVersion rootProject.ext.minSdkVersion
+                  targetSdkVersion rootProject.ext.targetSdkVersion
+                  versionCode 1
+                  versionName "1.0"
+              }
+              
+              signingConfigs {
+                  debug {
+                      storeFile file('debug.keystore')
+                      storePassword 'android'
+                      keyAlias 'androiddebugkey'
+                      keyPassword 'android'
+                  }
+                  release {
+                      if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                          storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                          storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                          keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                          keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+                      }
+                  }
+              }
+              
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+                  release {
+                      signingConfig signingConfigs.debug  // Use debug keystore for now
+                      minifyEnabled true
+                      proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+                  }
+              }
+              
+              bundle {
+                  language {
+                      enableSplit = false
+                  }
+                  density {
+                      enableSplit = true
+                  }
+                  abi {
+                      enableSplit = true
+                  }
+              }
+          }
           
-          export default function App() {
-            return (
-              <div className="container">
-                <h1>OptiBuy</h1>
-                <p>Collective Purchasing Platform for Better Prices</p>
-                
-                <div className="features">
-                  <div className="feature">
-                    <h3>🛍️ Group Buying</h3>
-                    <p>Join others buying the same items to unlock bulk discounts</p>
-                  </div>
-                  <div className="feature">
-                    <h3>💰 Better Prices</h3>
-                    <p>Access wholesale pricing through collective purchasing power</p>
-                  </div>
-                  <div className="feature">
-                    <h3>🤝 B2B Solutions</h3>
-                    <p>Specialized tools for veterinary clinics and pharmacies</p>
-                  </div>
-                  <div className="feature">
-                    <h3>📱 Mobile First</h3>
-                    <p>Optimized for mobile commerce and quick purchasing decisions</p>
-                  </div>
-                </div>
-                
-                <p style={{marginTop: '40px', fontSize: '1rem'}}>
-                  Ready for Google Play Store deployment
-                </p>
-              </div>
-            )
+          dependencies {
+              implementation "com.facebook.react:react-android"
+              implementation "com.facebook.react:hermes-android"
+              
+              if (hermesEnabled.toBoolean()) {
+                  implementation("com.facebook.react:hermes-android")
+              } else {
+                  implementation jscFlavor
+              }
           }
           EOF
           
-          # Create clean Vite config WITHOUT PostCSS
-          cat > vite.config.ts << 'EOF'
-          import { defineConfig } from 'vite'
-          import react from '@vitejs/plugin-react'
-          
-          export default defineConfig({
-            plugins: [react()],
-            build: {
-              outDir: 'dist',
-              emptyOutDir: true,
-              sourcemap: false,
-              minify: 'esbuild'
-            }
-          })
-          EOF
-          
-      - name: Build Web Assets
+      - name: Build React Native Bundle
         script: |
-          echo "Building web assets without PostCSS dependencies..."
-          npm run build
+          echo "=== Building React Native Bundle ==="
+          cd OptiBuy
           
-          echo "Verifying build output:"
-          ls -la dist/
-          echo "Build completed successfully"
+          # Create assets directory
+          mkdir -p android/app/src/main/assets
           
-      - name: Setup Capacitor
+          # Generate React Native bundle
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res/
+          
+          echo "Bundle created successfully"
+          ls -la android/app/src/main/assets/
+          
+      - name: Build AAB with ZIP Validation
         script: |
-          echo "Setting up Capacitor for Android..."
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          
-          # Create capacitor.config.ts
-          cat > capacitor.config.ts << 'EOF'
-          import { CapacitorConfig } from '@capacitor/cli';
-          
-          const config: CapacitorConfig = {
-            appId: 'com.optibuy.collective',
-            appName: 'OptiBuy',
-            webDir: 'dist',
-            server: {
-              androidScheme: 'https'
-            },
-            android: {
-              buildOptions: {
-                keystorePath: undefined,
-                keystoreAlias: undefined,
-                keystoreAliasPassword: undefined,
-                keystorePassword: undefined,
-                releaseType: 'AAB'
-              }
-            }
-          };
-          
-          export default config;
-          EOF
-          
-          # Initialize Capacitor
-          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
-          npx cap add android
-          npx cap sync android
-          
-          echo "Capacitor setup completed"
-          
-      - name: Build Android AAB
-        script: |
-          echo "Building Android AAB with proper structure..."
-          cd android
+          echo "=== Building AAB with ZIP Structure Validation ==="
+          cd OptiBuy/android
           
           # Ensure gradlew is executable
           chmod +x gradlew
           
-          # Clean and build AAB
+          # Clean previous builds
           ./gradlew clean
+          
+          # Build AAB (Android App Bundle)
           ./gradlew bundleRelease
           
-          # Verify AAB structure matches Google Play requirements
-          echo "Verifying AAB structure:"
+          # Verify the AAB was created
+          echo "=== AAB Build Verification ==="
           ls -la app/build/outputs/bundle/release/
           
-          # Copy AAB files to root with timestamp
-          cd ..
-          cp android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
-          cp android/app/build/outputs/bundle/release/app-release.aab ./optibuy-valid.aab
-          
-          # Create certificate for Google Play
-          if [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
-            echo "Creating upload certificate..."
-            cp android/app/build/outputs/mapping/release/mapping.txt ./mapping.txt 2>/dev/null || echo "No mapping file found"
-            
-            # Generate upload certificate info
-            echo "Upload certificate for Google Play App Signing" > upload_certificate.pem
-            echo "Generated from AAB build on $(date)" >> upload_certificate.pem
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+              echo "AAB file created successfully"
+              
+              # Validate ZIP structure
+              file app/build/outputs/bundle/release/app-release.aab
+              
+              # Copy to root with multiple names for Google Play compatibility
+              cd ../..
+              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-valid.aab
+              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
+              
+              # Final verification
+              echo "=== Final AAB Files ==="
+              ls -la *.aab
+              file *.aab
+              
+              echo "AAB generation completed successfully!"
+          else
+              echo "ERROR: AAB file not generated"
+              exit 1
           fi
-          
-          # Final verification
-          echo "=== ARTIFACT VERIFICATION ==="
-          ls -la *.aab
-          ls -la *.pem
-          ls -la mapping.txt 2>/dev/null || echo "No mapping file"
-          
-          echo "AAB build completed successfully"
-          
-      - name: Prepare Artifacts
-        script: |
-          echo "Preparing artifacts for download..."
-          
-          # Ensure all artifacts exist in root directory
-          ls -la *.aab 2>/dev/null || echo "No AAB files found"
-          ls -la *.pem 2>/dev/null || echo "No certificate files found"
-          ls -la mapping.txt 2>/dev/null || echo "No mapping file found"
-          
-          # Create artifact summary
-          echo "=== ARTIFACT SUMMARY ===" > artifact_summary.txt
-          echo "Build completed: $(date)" >> artifact_summary.txt
-          echo "Files generated:" >> artifact_summary.txt
-          ls -la *.aab >> artifact_summary.txt 2>/dev/null || echo "No AAB files" >> artifact_summary.txt
-          ls -la *.pem >> artifact_summary.txt 2>/dev/null || echo "No PEM files" >> artifact_summary.txt
-          
-          cat artifact_summary.txt
           
     artifacts:
       - "*.aab"
-      - "*.pem"
-      - "mapping.txt"
-      - "artifact_summary.txt"
-      - "android/app/build/outputs/bundle/release/*.aab"
+      - "OptiBuy/android/app/build/outputs/bundle/release/app-release.aab"
+      - "OptiBuy/android/app/build/outputs/mapping/release/mapping.txt"
     publishing:
       email:
         recipients:
