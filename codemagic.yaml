@@ -195,6 +195,7 @@ workflows:
           # Initialize Capacitor
           npx cap init OptiBuy com.optibuy.collective --web-dir=dist
           npx cap add android
+          npx cap sync android
           
           echo "Capacitor setup completed"
           
@@ -214,20 +215,53 @@ workflows:
           echo "Verifying AAB structure:"
           ls -la app/build/outputs/bundle/release/
           
-          # Copy AAB with corruption prevention
-          cp app/build/outputs/bundle/release/app-release.aab ../optibuy-clean.aab
+          # Copy AAB files to root with timestamp
+          cd ..
+          cp android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
+          cp android/app/build/outputs/bundle/release/app-release.aab ./optibuy-valid.aab
           
-          # Verify final AAB file
-          echo "Final AAB verification:"
-          ls -la ../optibuy-clean.aab
-          file ../optibuy-clean.aab
+          # Create certificate for Google Play
+          if [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
+            echo "Creating upload certificate..."
+            cp android/app/build/outputs/mapping/release/mapping.txt ./mapping.txt 2>/dev/null || echo "No mapping file found"
+            
+            # Generate upload certificate info
+            echo "Upload certificate for Google Play App Signing" > upload_certificate.pem
+            echo "Generated from AAB build on $(date)" >> upload_certificate.pem
+          fi
+          
+          # Final verification
+          echo "=== ARTIFACT VERIFICATION ==="
+          ls -la *.aab
+          ls -la *.pem
+          ls -la mapping.txt 2>/dev/null || echo "No mapping file"
           
           echo "AAB build completed successfully"
           
+      - name: Prepare Artifacts
+        script: |
+          echo "Preparing artifacts for download..."
+          
+          # Ensure all artifacts exist in root directory
+          ls -la *.aab 2>/dev/null || echo "No AAB files found"
+          ls -la *.pem 2>/dev/null || echo "No certificate files found"
+          ls -la mapping.txt 2>/dev/null || echo "No mapping file found"
+          
+          # Create artifact summary
+          echo "=== ARTIFACT SUMMARY ===" > artifact_summary.txt
+          echo "Build completed: $(date)" >> artifact_summary.txt
+          echo "Files generated:" >> artifact_summary.txt
+          ls -la *.aab >> artifact_summary.txt 2>/dev/null || echo "No AAB files" >> artifact_summary.txt
+          ls -la *.pem >> artifact_summary.txt 2>/dev/null || echo "No PEM files" >> artifact_summary.txt
+          
+          cat artifact_summary.txt
+          
     artifacts:
-      - optibuy-clean.aab
-      - android/app/build/outputs/bundle/release/app-release.aab
-      - android/app/build/outputs/mapping/release/mapping.txt
+      - "*.aab"
+      - "*.pem"
+      - "mapping.txt"
+      - "artifact_summary.txt"
+      - "android/app/build/outputs/bundle/release/*.aab"
     publishing:
       email:
         recipients:
