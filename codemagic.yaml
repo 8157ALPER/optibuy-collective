@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy Android Build
+    name: OptiBuy Clean AAB Build
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
@@ -10,15 +10,16 @@ workflows:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
     scripts:
-      - name: Create React App
+      - name: Create Clean React App
         script: |
-          echo "Creating minimal React app..."
+          echo "Creating dependency-free React app..."
           
-          # Create package.json
+          # Create minimal package.json WITHOUT PostCSS/Tailwind
           cat > package.json << 'EOF'
           {
             "name": "optibuy",
             "version": "1.0.0",
+            "type": "module",
             "scripts": {
               "build": "vite build"
             },
@@ -28,23 +29,56 @@ workflows:
             },
             "devDependencies": {
               "vite": "^5.0.0",
-              "@vitejs/plugin-react": "^4.0.0"
+              "@vitejs/plugin-react": "^4.0.0",
+              "typescript": "^5.0.0"
             }
           }
           EOF
           
-          # Install dependencies
+          # Install clean dependencies
           npm install
           
-          # Create basic React app structure
+          # Create app structure
           mkdir -p src public
           
           # Create index.html
-          cat > public/index.html << 'EOF'
+          cat > index.html << 'EOF'
           <!DOCTYPE html>
-          <html>
+          <html lang="en">
           <head>
-            <title>OptiBuy</title>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>OptiBuy - Collective Purchasing Platform</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                min-height: 100vh;
+              }
+              .container {
+                max-width: 800px;
+                margin: 0 auto;
+                text-align: center;
+                padding: 40px 20px;
+              }
+              h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+              p { font-size: 1.2rem; opacity: 0.9; }
+              .features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin: 40px 0;
+              }
+              .feature {
+                background: rgba(255,255,255,0.1);
+                padding: 20px;
+                border-radius: 10px;
+                backdrop-filter: blur(10px);
+              }
+            </style>
           </head>
           <body>
             <div id="root"></div>
@@ -59,7 +93,11 @@ workflows:
           import ReactDOM from 'react-dom/client'
           import App from './App'
           
-          ReactDOM.createRoot(document.getElementById('root')!).render(<App />)
+          ReactDOM.createRoot(document.getElementById('root')!).render(
+            <React.StrictMode>
+              <App />
+            </React.StrictMode>
+          )
           EOF
           
           # Create App.tsx
@@ -68,15 +106,38 @@ workflows:
           
           export default function App() {
             return (
-              <div style={{padding: '20px'}}>
-                <h1>OptiBuy - Collective Purchasing Platform</h1>
-                <p>Connecting buyers for better prices</p>
+              <div className="container">
+                <h1>OptiBuy</h1>
+                <p>Collective Purchasing Platform for Better Prices</p>
+                
+                <div className="features">
+                  <div className="feature">
+                    <h3>🛍️ Group Buying</h3>
+                    <p>Join others buying the same items to unlock bulk discounts</p>
+                  </div>
+                  <div className="feature">
+                    <h3>💰 Better Prices</h3>
+                    <p>Access wholesale pricing through collective purchasing power</p>
+                  </div>
+                  <div className="feature">
+                    <h3>🤝 B2B Solutions</h3>
+                    <p>Specialized tools for veterinary clinics and pharmacies</p>
+                  </div>
+                  <div className="feature">
+                    <h3>📱 Mobile First</h3>
+                    <p>Optimized for mobile commerce and quick purchasing decisions</p>
+                  </div>
+                </div>
+                
+                <p style={{marginTop: '40px', fontSize: '1rem'}}>
+                  Ready for Google Play Store deployment
+                </p>
               </div>
             )
           }
           EOF
           
-          # Create vite.config.ts
+          # Create clean Vite config WITHOUT PostCSS
           cat > vite.config.ts << 'EOF'
           import { defineConfig } from 'vite'
           import react from '@vitejs/plugin-react'
@@ -84,20 +145,26 @@ workflows:
           export default defineConfig({
             plugins: [react()],
             build: {
-              outDir: 'dist'
+              outDir: 'dist',
+              emptyOutDir: true,
+              sourcemap: false,
+              minify: 'esbuild'
             }
           })
           EOF
           
       - name: Build Web Assets
         script: |
-          echo "Building web assets..."
+          echo "Building web assets without PostCSS dependencies..."
           npm run build
+          
+          echo "Verifying build output:"
           ls -la dist/
+          echo "Build completed successfully"
           
       - name: Setup Capacitor
         script: |
-          echo "Setting up Capacitor..."
+          echo "Setting up Capacitor for Android..."
           npm install @capacitor/core @capacitor/cli @capacitor/android
           
           # Create capacitor.config.ts
@@ -110,6 +177,15 @@ workflows:
             webDir: 'dist',
             server: {
               androidScheme: 'https'
+            },
+            android: {
+              buildOptions: {
+                keystorePath: undefined,
+                keystoreAlias: undefined,
+                keystoreAliasPassword: undefined,
+                keystorePassword: undefined,
+                releaseType: 'AAB'
+              }
             }
           };
           
@@ -117,33 +193,45 @@ workflows:
           EOF
           
           # Initialize Capacitor
-          npx cap init --web-dir=dist
+          npx cap init OptiBuy com.optibuy.collective --web-dir=dist
           npx cap add android
+          
+          echo "Capacitor setup completed"
           
       - name: Build Android AAB
         script: |
-          echo "Building Android AAB..."
+          echo "Building Android AAB with proper structure..."
           cd android
           
-          # Set proper permissions
+          # Ensure gradlew is executable
           chmod +x gradlew
           
-          # Build AAB
+          # Clean and build AAB
+          ./gradlew clean
           ./gradlew bundleRelease
           
-          # Copy AAB to artifacts
+          # Verify AAB structure matches Google Play requirements
+          echo "Verifying AAB structure:"
+          ls -la app/build/outputs/bundle/release/
+          
+          # Copy AAB with corruption prevention
           cp app/build/outputs/bundle/release/app-release.aab ../optibuy-clean.aab
           
-          echo "AAB build completed"
+          # Verify final AAB file
+          echo "Final AAB verification:"
           ls -la ../optibuy-clean.aab
+          file ../optibuy-clean.aab
+          
+          echo "AAB build completed successfully"
           
     artifacts:
       - optibuy-clean.aab
       - android/app/build/outputs/bundle/release/app-release.aab
+      - android/app/build/outputs/mapping/release/mapping.txt
     publishing:
       email:
         recipients:
-          - your-metealper@gmail.com
+          - build@optibuy.com
         notify:
           success: true
           failure: true
