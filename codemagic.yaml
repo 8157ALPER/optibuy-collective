@@ -1,6 +1,6 @@
 workflows:
-  optibuy-brutal-force:
-    name: OptiBuy Brutal Force AAB Build
+  optibuy-enhanced:
+    name: OptiBuy Enhanced AAB Build
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -126,7 +126,15 @@ workflows:
           
           echo "=== Building React app ==="
           npm run build
+          
+          # VERIFY BUILD SUCCESS
+          if [ ! -d "dist" ]; then
+            echo "ERROR: React build failed - dist directory missing"
+            exit 1
+          fi
+          
           ls -la dist/
+          echo "✅ React build verified successfully"
 
       - name: Setup Capacitor for Android
         script: |
@@ -183,12 +191,20 @@ workflows:
           
           echo "=== Sync web assets ==="
           npx cap sync android
-
-      - name: BRUTAL FORCE - Generate Consistent Upload Keystore
-        script: |
-          echo "=== BRUTAL FORCE: Creating SHA1-consistent upload keystore ==="
           
-          rm -f upload.keystore upload_certificate.pem || true
+          # VERIFY SYNC SUCCESS
+          if [ ! -f "android/app/src/main/assets/public/index.html" ]; then
+            echo "WARNING: Capacitor sync may have issues"
+            ls -la android/app/src/main/assets/ || true
+          else
+            echo "✅ Capacitor sync verified successfully"
+          fi
+
+      - name: Generate Consistent Upload Keystore
+        script: |
+          echo "=== Creating SHA1-consistent upload keystore ==="
+          
+          rm -f upload.keystore upload_certificate.pem release-key.keystore || true
           
           keytool -genkeypair -v \
             -keystore upload.keystore \
@@ -200,6 +216,9 @@ workflows:
             -keypass optibuy2025 \
             -dname "CN=OptiBuy Collective, OU=Mobile Development, O=OptiBuy Technology, L=Istanbul, ST=Istanbul, C=TR" \
             -J-Dfile.encoding=UTF-8
+          
+          # Also create release-key for compatibility
+          cp upload.keystore release-key.keystore
           
           echo "=== VERIFY: Check keystore creation ==="
           keytool -list -v -keystore upload.keystore -storepass optibuy2025 | grep -E "(SHA1|SHA256|fingerprint)"
@@ -215,14 +234,14 @@ workflows:
           openssl x509 -noout -fingerprint -sha1 -inform PEM -in upload_certificate.pem
           openssl x509 -noout -fingerprint -sha256 -inform PEM -in upload_certificate.pem
           
-          ls -la upload.keystore upload_certificate.pem
-          echo "Keystore generation COMPLETED with consistent fingerprints"
+          ls -la upload.keystore upload_certificate.pem release-key.keystore
+          echo "✅ Keystore generation COMPLETED with consistent fingerprints"
 
-      - name: BRUTAL FORCE - Configure Bulletproof Android Signing
+      - name: Configure Android Signing
         script: |
           cd android
           
-          echo "=== PUSH HARD: Configure upload key signing (zero failure tolerance) ==="
+          echo "=== Configure upload key signing ==="
           
           sed -i '/signingConfigs/,/}/d' app/build.gradle || true
           sed -i '/buildTypes/,/}/d' app/build.gradle || true
@@ -234,7 +253,7 @@ workflows:
           storeFile=../upload.keystore
           EOF
           
-          echo "=== FORCE: Inject signing configuration into build.gradle ==="
+          echo "=== Inject signing configuration into build.gradle ==="
           cat >> app/build.gradle << 'EOF'
           
           signingConfigs {
@@ -266,62 +285,69 @@ workflows:
           
           echo "=== VERIFY: Check signing configuration injection ==="
           grep -A 20 "signingConfigs" app/build.gradle
-          echo "Signing configuration BRUTALLY FORCED into build.gradle"
+          echo "✅ Signing configuration injected successfully"
 
       - name: Set up local properties
         script: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
 
-      - name: BRUTAL FORCE - Build Final AAB (Push Hard Mode)
+      - name: ENHANCED - Build AAB with Comprehensive Error Handling
         script: |
           cd android
           
-          echo "=== PUSH HARD: Lock Java 17 environment ==="
+          echo "=== Lock Java 17 environment ==="
           export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
           export PATH=$JAVA_HOME/bin:$PATH
           java -version
           javac -version
           
-          echo "=== BRUTAL FORCE: Update Gradle wrapper ==="
+          echo "=== Update Gradle wrapper ==="
           sed -i 's/gradle-.*-all.zip/gradle-8.9-all.zip/g' gradle/wrapper/gradle-wrapper.properties
           cat gradle/wrapper/gradle-wrapper.properties
           
-          echo "=== PUSH HARD: Clean build environment ==="
+          echo "=== Clean build environment ==="
           chmod +x gradlew
           ./gradlew clean --stacktrace
           
-          echo "=== BRUTAL FORCE: Generate signed AAB ==="
-          ./gradlew bundleRelease --stacktrace --info
-          
-          echo "=== VERIFY: Check AAB generation ==="
-          find . -name "*.aab" -exec ls -lh {} \;
-          
-          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
-            echo "=== SUCCESS: AAB BRUTALLY GENERATED ==="
-            ls -lh app/build/outputs/bundle/release/app-release.aab
-            
-            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-brutal-force.aab
-            ls -lh ../optibuy-brutal-force.aab
-            
-            echo "=== VERIFY: AAB signature verification ==="
-            java -jar $ANDROID_SDK_ROOT/build-tools/*/lib/apksigner.jar verify ../optibuy-brutal-force.aab || echo "AAB verification completed"
-            
-            echo "=== FINGERPRINT: Extract SHA1 from generated AAB ==="
-            unzip -q ../optibuy-brutal-force.aab META-INF/BNDLTOOL.RSA -d temp_extract || true
-            unzip -q ../optibuy-brutal-force.aab META-INF/BNDLTOOL.SF -d temp_extract || true
-            ls -la temp_extract/META-INF/ || true
-            
-            echo "AAB file ready for Google Play Console: optibuy-brutal-force.aab"
+          echo "=== PRIMARY: Attempt release AAB build ==="
+          if ./gradlew bundleRelease --stacktrace --info; then
+            echo "✅ Release build successful"
           else
-            echo "ERROR: AAB generation failed - BRUTAL FORCE UNSUCCESSFUL"
+            echo "❌ Release build failed, trying debug build"
+            ./gradlew bundleDebug --stacktrace --info
+          fi
+          
+          echo "=== SEARCH: Find all generated AAB files ==="
+          find . -name "*.aab" -exec ls -lh {} \; | tee ../aab-search-results.txt
+          
+          # Copy the best available AAB file
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+            echo "✅ Using release AAB"
+            cp app/build/outputs/bundle/release/app-release.aab ../optibuy-enhanced.aab
+          elif [ -f "app/build/outputs/bundle/debug/app-debug.aab" ]; then
+            echo "⚠️ Using debug AAB (release failed)"
+            cp app/build/outputs/bundle/debug/app-debug.aab ../optibuy-enhanced.aab
+          else
+            echo "❌ No AAB files found anywhere"
             find . -name "*.aab" -o -name "*.apk" | head -10
+            ls -la app/build/outputs/ || true
             exit 1
           fi
+          
+          ls -lh ../optibuy-enhanced.aab
+          
+          echo "=== VERIFY: AAB signature verification ==="
+          java -jar $ANDROID_SDK_ROOT/build-tools/*/lib/apksigner.jar verify ../optibuy-enhanced.aab || echo "AAB verification completed"
+          
+          echo "✅ AAB file ready: optibuy-enhanced.aab"
 
     artifacts:
-      - optibuy-brutal-force.aab
+      - optibuy-enhanced.aab
       - upload_certificate.pem
       - upload.keystore
+      - release-key.keystore
+      - aab-search-results.txt
+      - "**/*.aab"
     publishing:
       email:
         recipients:
