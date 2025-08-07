@@ -1,7 +1,7 @@
 workflows:
   optibuy:
-    name: optibuy
-    max_build_duration: 60
+    name: Minimal Working React to AAB Build - Google Play App Signing Compatible
+    max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
       groups:
@@ -10,78 +10,245 @@ workflows:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
     scripts:
-      - name: Create Basic Android Project Structure
+      - name: Create React Native Project
         script: |
-          echo "=== Creating Android Project from Scratch ==="
+          echo "=== Creating React Native TypeScript Project ==="
           
-          # Skip React Native CLI completely - create structure manually
-          mkdir -p OptiBuy
+          # Install React Native CLI globally
+          npm install -g @react-native-community/cli
+          
+          # Create React Native project with TypeScript template
+          npx react-native@latest init OptiBuy --template react-native-template-typescript --skip-install
+          
           cd OptiBuy
           
-          # Create minimal package.json
+          # Update package.json with proper scripts
           cat > package.json << 'EOF'
           {
             "name": "OptiBuy",
             "version": "1.0.0",
             "private": true,
             "scripts": {
-              "android": "cd android && ./gradlew assembleRelease"
+              "android": "react-native run-android",
+              "bundle:android": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle",
+              "start": "react-native start",
+              "test": "jest",
+              "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+            },
+            "dependencies": {
+              "react": "18.2.0",
+              "react-native": "0.72.6"
+            },
+            "devDependencies": {
+              "@babel/core": "^7.20.0",
+              "@babel/preset-env": "^7.20.0",
+              "@babel/runtime": "^7.20.0",
+              "@react-native/eslint-config": "^0.72.2",
+              "@react-native/metro-config": "^0.72.11",
+              "@tsconfig/react-native": "^3.0.0",
+              "@types/react": "^18.0.24",
+              "@types/react-test-renderer": "^18.0.0",
+              "babel-jest": "^29.2.1",
+              "eslint": "^8.19.0",
+              "jest": "^29.2.1",
+              "metro-react-native-babel-preset": "0.76.8",
+              "prettier": "^2.4.1",
+              "react-test-renderer": "18.2.0",
+              "typescript": "4.8.4"
+            },
+            "jest": {
+              "preset": "react-native"
             }
           }
           EOF
           
-          # Create Android project structure manually
-          mkdir -p android/app/src/main/{java/com/optibuy/collective,res/values,res/mipmap-hdpi,res/mipmap-mdpi,res/mipmap-xhdpi,res/mipmap-xxhdpi,res/mipmap-xxxhdpi,assets}
+          # Create the main App component
+          cat > App.tsx << 'EOF'
+          import React from 'react';
+          import {
+            SafeAreaView,
+            ScrollView,
+            StatusBar,
+            StyleSheet,
+            Text,
+            View,
+            useColorScheme,
+          } from 'react-native';
           
-          # Create gradle wrapper
-          mkdir -p android/gradle/wrapper
+          function App(): JSX.Element {
+            const isDarkMode = useColorScheme() === 'dark';
           
-          # Create settings.gradle
-          cat > android/settings.gradle << 'EOF'
-          rootProject.name = 'OptiBuy'
-          include ':app'
-          EOF
+            const backgroundStyle = {
+              backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f9fa',
+              flex: 1,
+            };
           
-          # Create build.gradle (project level)
-          cat > android/build.gradle << 'EOF'
-          buildscript {
-              ext {
-                  buildToolsVersion = "33.0.0"
-                  minSdkVersion = 21
-                  compileSdkVersion = 33
-                  targetSdkVersion = 33
-                  ndkVersion = "21.4.7075529"
-              }
-              dependencies {
-                  classpath("com.android.tools.build:gradle:7.4.2")
-                  classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
-              }
+            return (
+              <SafeAreaView style={backgroundStyle}>
+                <StatusBar
+                  barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+                  backgroundColor={backgroundStyle.backgroundColor}
+                />
+                <ScrollView
+                  contentInsetAdjustmentBehavior="automatic"
+                  style={backgroundStyle}>
+                  <View style={styles.container}>
+                    <Text style={[styles.title, {color: isDarkMode ? '#fff' : '#000'}]}>
+                      OptiBuy
+                    </Text>
+                    <Text style={[styles.subtitle, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                      Collective Purchasing Platform
+                    </Text>
+                    
+                    <View style={styles.featuresContainer}>
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>🛍️</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          Group Buying
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Join others buying the same items to unlock bulk discounts
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>💰</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          Better Prices
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Access wholesale pricing through collective purchasing power
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>🤝</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          B2B Solutions
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Specialized tools for veterinary clinics and pharmacies
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.feature}>
+                        <Text style={styles.featureIcon}>📱</Text>
+                        <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
+                          Mobile First
+                        </Text>
+                        <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
+                          Optimized for mobile commerce and quick purchasing decisions
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <Text style={[styles.readyText, {color: isDarkMode ? '#4CAF50' : '#2E7D32'}]}>
+                      Ready for Google Play Store deployment
+                    </Text>
+                  </View>
+                </ScrollView>
+              </SafeAreaView>
+            );
           }
           
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-                  maven { url "https://www.jitpack.io" }
-              }
-          }
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              padding: 20,
+              alignItems: 'center',
+            },
+            title: {
+              fontSize: 32,
+              fontWeight: 'bold',
+              marginBottom: 8,
+              textAlign: 'center',
+            },
+            subtitle: {
+              fontSize: 18,
+              marginBottom: 40,
+              textAlign: 'center',
+            },
+            featuresContainer: {
+              width: '100%',
+              marginBottom: 40,
+            },
+            feature: {
+              backgroundColor: 'rgba(102, 126, 234, 0.1)',
+              padding: 20,
+              marginBottom: 15,
+              borderRadius: 12,
+              alignItems: 'center',
+            },
+            featureIcon: {
+              fontSize: 32,
+              marginBottom: 8,
+            },
+            featureTitle: {
+              fontSize: 18,
+              fontWeight: 'bold',
+              marginBottom: 8,
+              textAlign: 'center',
+            },
+            featureText: {
+              fontSize: 14,
+              textAlign: 'center',
+              lineHeight: 20,
+            },
+            readyText: {
+              fontSize: 16,
+              fontWeight: '600',
+              textAlign: 'center',
+            },
+          });
+          
+          export default App;
           EOF
           
-          # Create gradle.properties
-          cat > android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          # Install dependencies
+          npm install
+          
+      - name: Configure Android Build
+        script: |
+          echo "=== Configuring Android for AAB Build ==="
+          cd OptiBuy
+          
+          # Update android/gradle.properties for release build
+          cat >> android/gradle.properties << 'EOF'
+          
+          # Enable AAB (Android App Bundle) generation
+          android.bundle.enableUncompressedNativeLibs=false
+          android.enableR8.fullMode=true
           android.useAndroidX=true
           android.enableJetifier=true
-          android.bundle.enableUncompressedNativeLibs=false
+          
+          # Performance improvements
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxPermSize=512m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+          org.gradle.parallel=true
+          org.gradle.configureondemand=true
+          org.gradle.daemon=true
+          
+          # Use debug keystore for now (Google Play App Signing will handle final signing)
+          MYAPP_UPLOAD_STORE_FILE=debug.keystore
+          MYAPP_UPLOAD_KEY_ALIAS=androiddebugkey
+          MYAPP_UPLOAD_STORE_PASSWORD=android
+          MYAPP_UPLOAD_KEY_PASSWORD=android
           EOF
           
-          # Create app/build.gradle for AAB
+          # Update android/app/build.gradle for proper AAB configuration
           cat > android/app/build.gradle << 'EOF'
           apply plugin: "com.android.application"
+          apply plugin: "com.facebook.react"
+          
+          react {
+              entryFile = "index.js"
+              enableHermes = true
+              bundleInDebug = false
+              bundleInRelease = true
+          }
           
           android {
+              ndkVersion rootProject.ext.ndkVersion
               compileSdkVersion rootProject.ext.compileSdkVersion
-              buildToolsVersion rootProject.ext.buildToolsVersion
               
               namespace "com.optibuy.collective"
               defaultConfig {
@@ -100,10 +267,12 @@ workflows:
                       keyPassword 'android'
                   }
                   release {
-                      storeFile file('debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
+                      if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                          storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                          storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                          keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                          keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+                      }
                   }
               }
               
@@ -112,8 +281,8 @@ workflows:
                       signingConfig signingConfigs.debug
                   }
                   release {
-                      signingConfig signingConfigs.debug
-                      minifyEnabled false
+                      signingConfig signingConfigs.debug  // Use debug keystore for now
+                      minifyEnabled true
                       proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
                   }
               }
@@ -122,216 +291,90 @@ workflows:
                   language {
                       enableSplit = false
                   }
+                  density {
+                      enableSplit = true
+                  }
+                  abi {
+                      enableSplit = true
+                  }
               }
           }
           
           dependencies {
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.8.0'
-              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-          }
-          EOF
-          
-          # Create AndroidManifest.xml
-          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application
-                  android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
-                  android:label="OptiBuy"
-                  android:theme="@style/AppTheme">
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="true"
-                      android:theme="@style/AppTheme">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
-          
-          # Create MainActivity.java
-          cat > android/app/src/main/java/com/optibuy/collective/MainActivity.java << 'EOF'
-          package com.optibuy.collective;
-          
-          import android.app.Activity;
-          import android.os.Bundle;
-          import android.widget.TextView;
-          import android.widget.LinearLayout;
-          import android.graphics.Color;
-          import android.view.Gravity;
-          
-          public class MainActivity extends Activity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  
-                  LinearLayout layout = new LinearLayout(this);
-                  layout.setOrientation(LinearLayout.VERTICAL);
-                  layout.setGravity(Gravity.CENTER);
-                  layout.setBackgroundColor(Color.WHITE);
-                  layout.setPadding(40, 40, 40, 40);
-                  
-                  TextView title = new TextView(this);
-                  title.setText("OptiBuy");
-                  title.setTextSize(28);
-                  title.setTextColor(Color.parseColor("#1976D2"));
-                  title.setGravity(Gravity.CENTER);
-                  title.setPadding(0, 0, 0, 20);
-                  
-                  TextView subtitle = new TextView(this);
-                  subtitle.setText("Collective Purchasing Platform");
-                  subtitle.setTextSize(16);
-                  subtitle.setTextColor(Color.parseColor("#666666"));
-                  subtitle.setGravity(Gravity.CENTER);
-                  subtitle.setPadding(0, 0, 0, 40);
-                  
-                  TextView description = new TextView(this);
-                  description.setText("🛍️ Group Buying Power\n💰 Better Prices\n🤝 B2B Solutions\n📱 Mobile First\n\nReady for Google Play Store");
-                  description.setTextSize(14);
-                  description.setTextColor(Color.parseColor("#333333"));
-                  description.setGravity(Gravity.CENTER);
-                  description.setLineSpacing(8, 1.2f);
-                  
-                  layout.addView(title);
-                  layout.addView(subtitle);
-                  layout.addView(description);
-                  
-                  setContentView(layout);
+              implementation "com.facebook.react:react-android"
+              implementation "com.facebook.react:hermes-android"
+              
+              if (hermesEnabled.toBoolean()) {
+                  implementation("com.facebook.react:hermes-android")
+              } else {
+                  implementation jscFlavor
               }
           }
           EOF
           
-          # Create strings.xml
-          cat > android/app/src/main/res/values/strings.xml << 'EOF'
-          <resources>
-              <string name="app_name">OptiBuy</string>
-          </resources>
-          EOF
-          
-          # Create styles.xml
-          cat > android/app/src/main/res/values/styles.xml << 'EOF'
-          <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-                  <item name="colorPrimary">#1976D2</item>
-                  <item name="colorPrimaryDark">#1565C0</item>
-                  <item name="colorAccent">#FF4081</item>
-              </style>
-          </resources>
-          EOF
-          
-          # Create basic app icon (text-based)
-          for dpi in hdpi mdpi xhdpi xxhdpi xxxhdpi; do
-              cat > android/app/src/main/res/mipmap-${dpi}/ic_launcher.xml << 'EOF'
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="48dp"
-              android:height="48dp"
-              android:viewportWidth="48"
-              android:viewportHeight="48">
-              <path
-                  android:fillColor="#1976D2"
-                  android:pathData="M0,0h48v48h-48z"/>
-              <path
-                  android:fillColor="#FFFFFF"
-                  android:pathData="M12,16h24v4h-24zm0,8h24v4h-24zm0,8h16v4h-16z"/>
-          </vector>
-          EOF
-          done
-          
-          # Copy debug keystore
-          cp ~/.android/debug.keystore android/app/ || echo "Creating debug keystore..."
-          keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" || echo "Keystore exists"
-          
-          echo "=== Project Structure Created ==="
-          find android -type f | head -20
-          
-      - name: Build AAB Directly
+      - name: Build React Native Bundle
         script: |
-          echo "=== Building AAB ==="
+          echo "=== Building React Native Bundle ==="
+          cd OptiBuy
+          
+          # Create assets directory
+          mkdir -p android/app/src/main/assets
+          
+          # Generate React Native bundle
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res/
+          
+          echo "Bundle created successfully"
+          ls -la android/app/src/main/assets/
+          
+      - name: Build AAB with ZIP Validation
+        script: |
+          echo "=== Building AAB with ZIP Structure Validation ==="
           cd OptiBuy/android
           
-          # Download Gradle Wrapper
-          curl -o gradle/wrapper/gradle-wrapper.jar https://services.gradle.org/distributions/gradle-7.6-bin.zip
-          
-          # Create gradlew script
-          cat > gradlew << 'EOF'
-          #!/bin/sh
-          GRADLE_APP_NAME="Gradle"
-          GRADLE_USER_HOME="`pwd`/.gradle"
-          export GRADLE_USER_HOME
-          
-          exec java -classpath gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain "$@"
-          EOF
-          
+          # Ensure gradlew is executable
           chmod +x gradlew
           
-          # Simplified build - just create AAB directly
-          echo "Building AAB..."
-          ./gradlew clean bundleRelease || {
-              echo "Gradle build failed, creating AAB manually..."
-              
-              # Manual AAB creation as absolute fallback
-              mkdir -p app/build/outputs/bundle/release
-              
-              # Create minimal AAB structure
-              cd app/build/outputs/bundle/release
-              mkdir -p base/{manifest,dex,res,lib}
-              
-              # Create manifest
-              cat > base/manifest/AndroidManifest.xml << 'EOF'
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-              package="com.optibuy.collective"
-              android:versionCode="1"
-              android:versionName="1.0">
-              <application android:label="OptiBuy" android:icon="@mipmap/ic_launcher">
-                  <activity android:name=".MainActivity" android:exported="true">
-                      <intent-filter>
-                          <action android:name="android.intent.action.MAIN"/>
-                          <category android:name="android.intent.category.LAUNCHER"/>
-                      </intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
-              
-              # Create BUNDLE-METADATA
-              mkdir -p BUNDLE-METADATA
-              echo "com.optibuy.collective" > BUNDLE-METADATA/com.android.tools.build.bundletool/bundle-config.pb
-              
-              # Create the AAB ZIP
-              zip -r app-release.aab base/ BUNDLE-METADATA/
-              
-              cd ../../../../..
-          }
+          # Clean previous builds
+          ./gradlew clean
           
-          # Verify AAB exists
-          echo "=== AAB Verification ==="
-          find . -name "*.aab" -ls
+          # Build AAB (Android App Bundle)
+          ./gradlew bundleRelease
           
-          # Copy to root
-          find . -name "*.aab" -exec cp {} ./optibuy-simple.aab \;
+          # Verify the AAB was created
+          echo "=== AAB Build Verification ==="
+          ls -la app/build/outputs/bundle/release/
           
-          if [ -f "optibuy-simple.aab" ]; then
-              echo "AAB created successfully"
-              ls -la optibuy-simple.aab
-              file optibuy-simple.aab
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+              echo "AAB file created successfully"
               
-              # Create verification file
-              echo "=== BUILD COMPLETE ===" > build_verification.txt
-              echo "AAB file: optibuy-simple.aab" >> build_verification.txt
-              echo "Size: $(ls -lh optibuy-simple.aab | awk '{print $5}')" >> build_verification.txt
-              echo "Created: $(date)" >> build_verification.txt
+              # Validate ZIP structure
+              file app/build/outputs/bundle/release/app-release.aab
+              
+              # Copy to root with multiple names for Google Play compatibility
+              cd ../..
+              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-valid.aab
+              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
+              
+              # Final verification
+              echo "=== Final AAB Files ==="
+              ls -la *.aab
+              file *.aab
+              
+              echo "AAB generation completed successfully!"
           else
-              echo "ERROR: No AAB generated"
+              echo "ERROR: AAB file not generated"
               exit 1
           fi
           
     artifacts:
       - "*.aab"
-      - "build_verification.txt"
+      - "OptiBuy/android/app/build/outputs/bundle/release/app-release.aab"
+      - "OptiBuy/android/app/build/outputs/mapping/release/mapping.txt"
     publishing:
       email:
         recipients:
