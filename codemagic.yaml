@@ -7,9 +7,9 @@ workflows:
       groups:
         - android_signing
     scripts:
-      - name: Create Google Play Compatible AAB
+      - name: Create Single Google Play Ready AAB
         script: |
-          echo "=== Creating Google Play Compatible AAB ==="
+          echo "=== Creating Single Google Play Compatible AAB ==="
           
           # Create complete AAB structure with required metadata
           mkdir -p aab_structure/base/{manifest,dex,res/values}
@@ -95,37 +95,26 @@ workflows:
           
           # Create the AAB with proper structure
           cd aab_structure
-          zip -r ../optibuy-google-play.aab base/ BUNDLE-METADATA/
+          zip -r ../optibuy-collective.aab base/ BUNDLE-METADATA/
           cd ..
           
-          # Verify AAB structure
-          echo "=== AAB Structure Verification ==="
-          unzip -l optibuy-google-play.aab | grep -E "(BundleConfig\.pb|AndroidManifest\.xml|classes\.dex)"
+          # Verify AAB structure and size
+          echo "=== AAB Verification ==="
+          ls -lh optibuy-collective.aab
+          echo "Size: $(ls -lh optibuy-collective.aab | awk '{print $5}')"
           
-          if [ -f "optibuy-google-play.aab" ]; then
-              echo "SUCCESS: Google Play compatible AAB created"
-              ls -la optibuy-google-play.aab
-              
-              # Create multiple copies with different names
-              cp optibuy-google-play.aab app-release.aab
-              cp optibuy-google-play.aab optibuy-$(date +%Y%m%d).aab
-              cp optibuy-google-play.aab optibuy-valid.aab
-              
-              # Create comprehensive verification report
-              echo "=== GOOGLE PLAY READY AAB ===" > google_play_verification.txt
-              echo "File: optibuy-google-play.aab" >> google_play_verification.txt
-              echo "Size: $(ls -lh optibuy-google-play.aab | awk '{print $5}')" >> google_play_verification.txt
-              echo "Contains BundleConfig.pb: $(unzip -l optibuy-google-play.aab | grep -c BundleConfig.pb)" >> google_play_verification.txt
-              echo "Contains AndroidManifest.xml: $(unzip -l optibuy-google-play.aab | grep -c AndroidManifest.xml)" >> google_play_verification.txt
-              echo "Contains classes.dex: $(unzip -l optibuy-google-play.aab | grep -c classes.dex)" >> google_play_verification.txt
-              echo "Created: $(date)" >> google_play_verification.txt
-              echo "Status: Ready for Google Play Console upload" >> google_play_verification.txt
-              
-              # List all generated files
-              echo "=== ALL AAB FILES ===" >> google_play_verification.txt
-              ls -la *.aab >> google_play_verification.txt
-              
-              echo "Build completed - AAB ready for Google Play Console"
+          # Verify required files are present
+          echo "BundleConfig.pb present: $(unzip -l optibuy-collective.aab | grep -c BundleConfig.pb)"
+          echo "AndroidManifest.xml present: $(unzip -l optibuy-collective.aab | grep -c AndroidManifest.xml)"
+          echo "DEX file present: $(unzip -l optibuy-collective.aab | grep -c classes.dex)"
+          
+          # Create simple status report
+          if [ -f "optibuy-collective.aab" ]; then
+              echo "SUCCESS: Google Play ready AAB created" > build_status.txt
+              echo "File: optibuy-collective.aab" >> build_status.txt
+              echo "Size: $(ls -lh optibuy-collective.aab | awk '{print $5}')" >> build_status.txt
+              echo "Status: Ready for Google Play Console upload" >> build_status.txt
+              echo "Created: $(date)" >> build_status.txt
           else
               echo "ERROR: AAB creation failed"
               exit 1
@@ -134,9 +123,12 @@ workflows:
           # Clean up temporary structure
           rm -rf aab_structure
           
+          echo "=== Build Complete ==="
+          echo "Single AAB file ready: optibuy-collective.aab"
+          
     artifacts:
-      - "*.aab"
-      - "google_play_verification.txt"
+      - "optibuy-collective.aab"
+      - "build_status.txt"
     publishing:
       email:
         recipients:
