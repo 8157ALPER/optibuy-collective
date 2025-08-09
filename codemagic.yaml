@@ -5,8 +5,6 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       flutter: stable
-      android:
-        api_level: 33
       groups:
         - android_signing
       vars:
