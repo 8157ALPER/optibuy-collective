@@ -397,23 +397,49 @@ workflows:
             --obfuscate \
             --split-debug-info=build/app/outputs/symbols
           
-          # Copy AAB to root for collection
-          cp build/app/outputs/bundle/release/app-release.aab ../optibuy-flutter-final.aab
+          # Copy AAB to root for collection with verification
+          echo "=== Copying AAB file ==="
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-flutter-final.aab
+              echo "AAB file copied successfully"
+          else
+              echo "ERROR: AAB file not found at expected location"
+              find . -name "*.aab" -type f
+              exit 1
+          fi
           
           # Verify build
           echo "=== Build Verification ==="
-          ls -lh ../optibuy-flutter-final.aab
-          echo "AAB Size: $(ls -lh ../optibuy-flutter-final.aab | awk '{print $5}')"
+          if [ -f "../optibuy-flutter-final.aab" ]; then
+              ls -lh ../optibuy-flutter-final.aab
+              echo "AAB Size: $(ls -lh ../optibuy-flutter-final.aab | awk '{print $5}')"
+          else
+              echo "ERROR: AAB file missing after copy"
+              exit 1
+          fi
           
-          # Create success report
-          echo "SUCCESS: Flutter AAB Generated" > ../flutter_success_report.txt
-          echo "File: optibuy-flutter-final.aab" >> ../flutter_success_report.txt
-          echo "Size: $(ls -lh ../optibuy-flutter-final.aab | awk '{print $5}')" >> ../flutter_success_report.txt
-          echo "Build Method: Flutter Official Build Tools" >> ../flutter_success_report.txt
-          echo "Target Platforms: android-arm64,android-arm,android-x64" >> ../flutter_success_report.txt
-          echo "Features: Obfuscation, Multi-platform, Release build" >> ../flutter_success_report.txt
-          echo "Generated: $(date)" >> ../flutter_success_report.txt
-          echo "Status: Google Play Console Ready" >> ../flutter_success_report.txt
+          # Create success report with actual size
+          cd ..
+          if [ -f "optibuy-flutter-final.aab" ]; then
+              AAB_SIZE=$(ls -lh optibuy-flutter-final.aab | awk '{print $5}')
+              echo "SUCCESS: Flutter AAB Generated" > flutter_success_report.txt
+              echo "File: optibuy-flutter-final.aab" >> flutter_success_report.txt
+              echo "Size: $AAB_SIZE" >> flutter_success_report.txt
+              echo "Build Method: Flutter Official Build Tools" >> flutter_success_report.txt
+              echo "Target Platforms: android-arm64,android-arm,android-x64" >> flutter_success_report.txt
+              echo "Features: Obfuscation, Multi-platform, Release build" >> flutter_success_report.txt
+              echo "Generated: $(date)" >> flutter_success_report.txt
+              echo "Status: Google Play Console Ready" >> flutter_success_report.txt
+              
+              echo "=== Final Verification ==="
+              echo "AAB file present: YES"
+              echo "AAB file size: $AAB_SIZE"
+              echo "Ready for Google Play upload: YES"
+          else
+              echo "FAILURE: AAB file not generated" > flutter_success_report.txt
+              echo "Build process completed but AAB missing" >> flutter_success_report.txt
+              exit 1
+          fi
 
     artifacts:
       - "optibuy-flutter-final.aab"
