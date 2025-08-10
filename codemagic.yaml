@@ -209,7 +209,7 @@ workflows:
                       android:exported="true"
                       android:launchMode="singleTop"
                       android:theme="@style/LaunchTheme"
-                      android:orientation="portrait"
+                      android:screenOrientation="portrait"
                       android:windowSoftInputMode="adjustResize">
                       
                       <meta-data
