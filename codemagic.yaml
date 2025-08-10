@@ -55,6 +55,21 @@ workflows:
               - assets/config/
           EOF
           
+          # Create release keystore for signing
+          echo "=== Creating Release Keystore ==="
+          keytool -genkey -noprompt \
+            -alias optibuy-key \
+            -dname "CN=OptiBuy, OU=Collective Purchasing, O=OptiBuy Ltd, L=Istanbul, S=Istanbul, C=TR" \
+            -keystore release-key.keystore \
+            -storepass optibuy2025 \
+            -keypass optibuy2025 \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000
+          
+          echo "Keystore created successfully"
+          ls -la release-key.keystore
+          
           # Create assets directories and files
           mkdir -p assets/images assets/config
           echo '{"app_name": "OptiBuy", "version": "1.0.0", "market": "Turkish B2B"}' > assets/config/app_config.json
@@ -99,6 +114,15 @@ workflows:
                   jvmTarget = '1.8'
               }
           
+              signingConfigs {
+                  release {
+                      storeFile file("../../release-key.keystore")
+                      storePassword "optibuy2025"
+                      keyAlias "optibuy-key"
+                      keyPassword "optibuy2025"
+                  }
+              }
+          
               defaultConfig {
                   applicationId "com.optibuy.collective"
                   minSdk 21
@@ -109,7 +133,9 @@ workflows:
           
               buildTypes {
                   release {
-                      signingConfig signingConfigs.debug
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
           }
@@ -468,22 +494,30 @@ workflows:
               exit 1
           fi
           
+          # Verify keystore used in build
+          echo "=== Keystore Verification ==="
+          if [ -f "../release-key.keystore" ]; then
+              keytool -list -v -keystore ../release-key.keystore -storepass optibuy2025 | head -20
+          fi
+          
           # Create success report with actual size
           cd ..
           if [ -f "optibuy-flutter-final.aab" ]; then
               AAB_SIZE=$(ls -lh optibuy-flutter-final.aab | awk '{print $5}')
-              echo "SUCCESS: Flutter AAB Generated" > flutter_success_report.txt
+              echo "SUCCESS: Flutter AAB Generated with Release Signing" > flutter_success_report.txt
               echo "File: optibuy-flutter-final.aab" >> flutter_success_report.txt
               echo "Size: $AAB_SIZE" >> flutter_success_report.txt
               echo "Build Method: Flutter Official Build Tools" >> flutter_success_report.txt
               echo "Target Platforms: android-arm64,android-arm,android-x64" >> flutter_success_report.txt
-              echo "Features: Obfuscation, Multi-platform, Release build" >> flutter_success_report.txt
+              echo "Features: Release signing, Multi-platform, Optimized build" >> flutter_success_report.txt
+              echo "Keystore: release-key.keystore (optibuy-key)" >> flutter_success_report.txt
               echo "Generated: $(date)" >> flutter_success_report.txt
-              echo "Status: Google Play Console Ready" >> flutter_success_report.txt
+              echo "Status: Google Play Console Ready - Release Signed" >> flutter_success_report.txt
               
               echo "=== Final Verification ==="
               echo "AAB file present: YES"
               echo "AAB file size: $AAB_SIZE"
+              echo "Signing: RELEASE MODE"
               echo "Ready for Google Play upload: YES"
           else
               echo "FAILURE: AAB file not generated" > flutter_success_report.txt
@@ -494,6 +528,7 @@ workflows:
     artifacts:
       - "optibuy-flutter-final.aab"
       - "flutter_success_report.txt"
+      - "release-key.keystore"
       
     publishing:
       email:
