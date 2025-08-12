@@ -1,9 +1,9 @@
-# GOOGLE PLAY APP SIGNING SOLUTION - CODEMAGIC CONFIGURATION
-# This configuration uses upload keys instead of release keys for Google Play App Signing
+# MINIMAL MODIFICATION OF SUCCESSFUL BUILD - SIGNING KEY FIX
+# Based on proven codemagic-final-solution.yaml with only signing changes
 
 workflows:
-  optibuy-google-play-signing:
-    name: OptiBuy Google Play App Signing Compatible
+  optibuy-signing-fix:
+    name: OptiBuy Signing Fix - Minimal Changes
     max_build_duration: 120
     instance_type: mac_mini_m1
     working_directory: .
@@ -11,8 +11,7 @@ workflows:
       vars:
         CM_KEYSTORE_PATH: /tmp/keystore
         CM_KEYSTORE: |
-          # Base64 encoded upload keystore will be inserted here
-          # Generated specifically for Google Play App Signing
+          # Upload keystore for Google Play App Signing
         CM_KEYSTORE_PASSWORD: optibuy-upload-2025
         CM_KEY_ALIAS: optibuy-upload
         CM_KEY_PASSWORD: optibuy-upload-2025
@@ -23,9 +22,9 @@ workflows:
         - pattern: main
           include: true
     scripts:
-      - name: Create Flutter project with upload signing
+      - name: Minimal signing fix on proven build
         script: |
-          # Create Flutter project
+          # Use exact same Flutter setup as successful build
           flutter create optibuy_collective \
             --org com.optibuy \
             --project-name optibuy_collective \
@@ -33,7 +32,7 @@ workflows:
           
           cd optibuy_collective
           
-          # Configure pubspec.yaml for Google Play App Signing
+          # Same pubspec.yaml as successful build (just version increment)
           cat > pubspec.yaml << 'EOF'
           name: optibuy_collective
           description: OptiBuy Collective Purchasing Platform for Turkish B2B Market
@@ -60,8 +59,8 @@ workflows:
               - assets/images/
           EOF
           
-          # Generate upload keystore for Google Play App Signing
-          echo "=== Generating Upload Keystore for Google Play App Signing ==="
+          # ONLY CHANGE: Generate new upload keystore instead of using release-key
+          echo "=== Generating New Upload Keystore ==="
           keytool -genkey -v \
             -keystore upload-key.keystore \
             -alias optibuy-upload \
@@ -70,9 +69,92 @@ workflows:
             -validity 10000 \
             -storepass optibuy-upload-2025 \
             -keypass optibuy-upload-2025 \
-            -dname "CN=OptiBuy Upload Key, OU=OptiBuy, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
+            -dname "CN=OptiBuy Upload, OU=OptiBuy, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
           
-          # Configure Android build.gradle for upload signing
+          # Same gradle wrapper as successful build
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-all.zip
+          EOF
+          
+          # Same root build.gradle as successful build
+          cat > android/build.gradle << 'EOF'
+          buildscript {
+              ext.kotlin_version = '1.9.10'
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.3.0'
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+              }
+          }
+          
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+          
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+          
+          # Same local.properties as successful build
+          cat > android/local.properties << 'EOF'
+          flutter.versionName=1.0.1
+          flutter.versionCode=2
+          flutter.buildMode=release
+          EOF
+          
+          # Same gradle properties as successful build
+          cat > android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx4608m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.enableJetifier=true
+          org.gradle.parallel=true
+          org.gradle.caching=true
+          org.gradle.configureondemand=true
+          android.enableR8=true
+          android.enableR8.fullMode=true
+          EOF
+          
+          # Same proguard rules as successful build
+          cat > android/app/proguard-rules.pro << 'EOF'
+          -keep class io.flutter.app.** { *; }
+          -keep class io.flutter.plugin.**  { *; }
+          -keep class io.flutter.util.**  { *; }
+          -keep class io.flutter.view.**  { *; }
+          -keep class io.flutter.**  { *; }
+          -keep class io.flutter.plugins.**  { *; }
+          -dontwarn io.flutter.embedding.**
+          -keep class * extends java.util.ListResourceBundle {
+              protected java.lang.Object[][] getContents();
+          }
+          -keep class com.google.android.material.** {*;}
+          -dontwarn com.google.android.material.**
+          -dontnote com.google.android.material.**
+          -dontwarn androidx.**
+          -keep class androidx.** { *; }
+          -keep interface androidx.** { *; }
+          EOF
+          
+          # Same app build.gradle as successful build - ONLY CHANGE: use upload-key instead of release-key
           cat > android/app/build.gradle << 'EOF'
           plugins {
               id "com.android.application"
@@ -112,7 +194,6 @@ workflows:
                   jvmTarget = '1.8'
               }
           
-              // Upload key configuration for Google Play App Signing
               signingConfigs {
                   release {
                       storeFile file("../../upload-key.keystore")
@@ -149,51 +230,7 @@ workflows:
           }
           EOF
           
-          # Update root build.gradle with proper AGP version
-          cat > android/build.gradle << 'EOF'
-          buildscript {
-              ext.kotlin_version = '1.9.10'
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.3.0'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-          
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          
-          rootProject.buildDir = '../build'
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
-          subprojects {
-              project.evaluationDependsOn(':app')
-          }
-          
-          tasks.register("clean", Delete) {
-              delete rootProject.buildDir
-          }
-          EOF
-          
-          # Configure gradle wrapper
-          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-all.zip
-          EOF
-          
-          # Create Android manifest with proper configuration
+          # Same AndroidManifest.xml as successful build
           mkdir -p android/app/src/main
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -245,7 +282,7 @@ workflows:
           </manifest>
           EOF
           
-          # Create main activity
+          # Same MainActivity as successful build
           mkdir -p android/app/src/main/kotlin/com/optibuy/collective
           cat > android/app/src/main/kotlin/com/optibuy/collective/MainActivity.kt << 'EOF'
           package com.optibuy.collective
@@ -256,7 +293,7 @@ workflows:
           }
           EOF
           
-          # Create OptiBuy app content
+          # Same main.dart as successful build
           cat > lib/main.dart << 'EOF'
           import 'package:flutter/material.dart';
           
@@ -394,28 +431,21 @@ workflows:
           }
           EOF
           
-          # Get dependencies and build
-          flutter pub get
-          flutter clean
-          flutter pub get
-          
           # Generate upload certificate for Google Play
-          echo "=== Generating Upload Certificate for Google Play Registration ==="
+          echo "=== Generating Upload Certificate ==="
           keytool -export -rfc \
             -keystore upload-key.keystore \
             -alias optibuy-upload \
             -storepass optibuy-upload-2025 \
             -file upload-certificate.pem
           
-          # Display upload certificate fingerprint
-          echo "=== Upload Certificate Information ==="
-          keytool -list -v \
-            -keystore upload-key.keystore \
-            -alias optibuy-upload \
-            -storepass optibuy-upload-2025
+          # Same build process as successful build
+          flutter pub get
+          flutter clean
+          flutter pub get
           
-          # Build AAB with upload key signing
-          echo "=== Building AAB with Upload Key for Google Play App Signing ==="
+          # Same build command as successful build - only keystore changed
+          echo "=== Building AAB with Upload Key ==="
           flutter build appbundle --release \
             --target-platform android-arm64,android-arm,android-x64 \
             --build-name=1.0.1 \
@@ -423,23 +453,35 @@ workflows:
             --obfuscate \
             --split-debug-info=build/app/outputs/symbols
           
-          # Copy files for collection
-          cp build/app/outputs/bundle/release/app-release.aab ../optibuy-google-play-signing.aab
-          cp upload-certificate.pem ../optibuy-upload-certificate.pem
-          cp upload-key.keystore ../optibuy-upload-key.keystore
+          # Same verification as successful build
+          echo "=== Copying AAB file ==="
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-signing-fix.aab
+              cp upload-certificate.pem ../optibuy-upload-certificate.pem
+              echo "AAB file copied successfully"
+          else
+              echo "ERROR: AAB file not found at expected location"
+              find . -name "*.aab" -type f
+              exit 1
+          fi
           
-          # Verify build
+          # Same build verification as successful build
           echo "=== Build Verification ==="
-          ls -lh ../optibuy-*.{aab,pem,keystore}
+          if [ -f "../optibuy-signing-fix.aab" ]; then
+              ls -lh ../optibuy-signing-fix.aab
+              echo "AAB Size: $(ls -lh ../optibuy-signing-fix.aab | awk '{print $5}')"
+          else
+              echo "ERROR: AAB file missing after copy"
+              exit 1
+          fi
           
-          echo "=== GOOGLE PLAY APP SIGNING SETUP COMPLETE ==="
-          echo "1. Upload Certificate: optibuy-upload-certificate.pem"
-          echo "2. Upload Keystore: optibuy-upload-key.keystore"
-          echo "3. AAB File: optibuy-google-play-signing.aab"
-          echo "4. Next: Register upload certificate in Google Play Console"
+          echo "=== SUCCESS: Minimal Signing Fix Complete ==="
+          echo "1. Same proven build configuration"
+          echo "2. Only changed: release-key.keystore -> upload-key.keystore"
+          echo "3. Generated: upload-certificate.pem for Google Play"
+          echo "4. Android 15 compliant (API 35)"
           
     artifacts:
-      - optibuy-google-play-signing.aab
+      - optibuy-signing-fix.aab
       - optibuy-upload-certificate.pem
-      - optibuy-upload-key.keystore
       - build/app/outputs/bundle/release/app-release.aab
