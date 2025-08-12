@@ -1,6 +1,6 @@
 workflows:
-  optibuy-backup:
-    name: optibuy-backup
+  optibuy-v2-backup:
+    name: OptiBuy V2 Backup - Fresh Package
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
@@ -10,9 +10,9 @@ workflows:
     scripts:
       - name: Create OptiBuy V2 Flutter AAB - Fresh Package Name
         script: |
-          echo "=== OptiBuy V2 Flutter AAB Generation - Backup Strategy ==="
+          echo "=== OptiBuy V2 Flutter AAB Generation - Fresh Package ==="
           echo "Package Name: com.optibuy.collective.v2"
-          echo "Fresh keystore approach - no signing conflicts"
+          echo "Strategy: Fresh start to avoid signing conflicts"
           
           # Install Flutter dependencies
           flutter doctor
@@ -57,7 +57,7 @@ workflows:
               - assets/config/
           EOF
           
-          # Create fresh release keystore - no conflicts expected
+          # Create fresh release keystore
           echo "=== Creating Fresh Release Keystore for V2 ==="
           keytool -genkey -noprompt \
             -alias optibuy-v2-key \
@@ -70,12 +70,13 @@ workflows:
             -validity 10000
           
           echo "Fresh V2 keystore created successfully"
-          ls -la optibuy-v2.keystore
           
-          # Display V2 keystore fingerprint (will be completely new)
+          # Display V2 keystore fingerprint
           echo "=== V2 Keystore Fingerprint (Fresh) ==="
           keytool -list -v -keystore optibuy-v2.keystore -storepass optibuy2025v2 -alias optibuy-v2-key | grep -A3 -B3 "SHA1"
-          
+
+      - name: Configure V2 Android Build
+        script: |
           # Create assets directories and files
           mkdir -p assets/images assets/config
           echo '{"app_name": "OptiBuy V2", "version": "2.0.0", "market": "Turkish B2B", "package": "v2"}' > assets/config/app_config.json
@@ -155,7 +156,9 @@ workflows:
               implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10'
           }
           EOF
-          
+
+      - name: Configure Android Settings and Manifest
+        script: |
           # Update root build.gradle
           cat > android/build.gradle << 'EOF'
           buildscript {
@@ -191,7 +194,7 @@ workflows:
           }
           EOF
           
-          # Remove any existing settings files to avoid conflicts
+          # Remove any existing settings files
           rm -f android/settings.gradle.kts
           
           # Update settings.gradle
@@ -229,16 +232,12 @@ workflows:
               
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
               
               <application
                   android:label="OptiBuy V2"
                   android:name="${applicationName}"
                   android:icon="@mipmap/ic_launcher"
-                  android:theme="@style/LaunchTheme"
-                  android:allowBackup="true"
-                  android:usesCleartextTraffic="true">
+                  android:theme="@style/LaunchTheme">
                   
                   <activity
                       android:name=".MainActivity"
@@ -264,20 +263,9 @@ workflows:
               </application>
           </manifest>
           EOF
-          
-          # Create proguard rules for release build
-          mkdir -p android/app
-          cat > android/app/proguard-rules.pro << 'EOF'
-          # Add project specific ProGuard rules here.
-          -keep class io.flutter.app.** { *; }
-          -keep class io.flutter.plugin.**  { *; }
-          -keep class io.flutter.util.**  { *; }
-          -keep class io.flutter.view.**  { *; }
-          -keep class io.flutter.**  { *; }
-          -keep class io.flutter.plugins.**  { *; }
-          -dontwarn io.flutter.embedding.**
-          EOF
-          
+
+      - name: Create V2 Flutter App and Build AAB
+        script: |
           # Create V2 main.dart with updated branding
           cat > lib/main.dart << 'EOF'
           import 'package:flutter/material.dart';
@@ -515,23 +503,6 @@ workflows:
             -alias optibuy-v2-key \
             -file ../optibuy-v2-upload-certificate.pem
           
-          # Verify V2 build
-          echo "=== V2 Build Verification ==="
-          if [ -f "../optibuy-v2-fresh.aab" ]; then
-              ls -lh ../optibuy-v2-fresh.aab
-              echo "V2 AAB Size: $(ls -lh ../optibuy-v2-fresh.aab | awk '{print $5}')"
-          else
-              echo "ERROR: V2 AAB file missing after copy"
-              exit 1
-          fi
-          
-          # Final V2 keystore verification
-          echo "=== V2 Final Keystore Verification ==="
-          if [ -f "../optibuy-v2.keystore" ]; then
-              echo "V2 keystore fingerprint (fresh - no conflicts):"
-              keytool -list -v -keystore ../optibuy-v2.keystore -storepass optibuy2025v2 -alias optibuy-v2-key | grep -A1 -B1 "SHA1"
-          fi
-          
           # Create V2 success report
           cd ..
           if [ -f "optibuy-v2-fresh.aab" ]; then
@@ -544,13 +515,11 @@ workflows:
               echo "Upload Certificate: optibuy-v2-upload-certificate.pem" >> optibuy_v2_success_report.txt
               echo "Generated: $(date)" >> optibuy_v2_success_report.txt
               echo "Status: Fresh package - no signing conflicts expected" >> optibuy_v2_success_report.txt
-              echo "Strategy: Backup solution while original app support request pending" >> optibuy_v2_success_report.txt
               
               echo "=== V2 Final Status ==="
               echo "V2 AAB file present: YES"
               echo "V2 AAB file size: $AAB_SIZE" 
               echo "V2 Package name: com.optibuy.collective.v2"
-              echo "V2 Upload certificate: YES"
               echo "V2 Ready for fresh Google Play listing: YES"
           else
               echo "FAILURE: V2 AAB file not generated" > optibuy_v2_success_report.txt
