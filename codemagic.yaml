@@ -1,6 +1,6 @@
 workflows:
-  optibuy:
-    name: optibuy
+  optibuy-backup:
+    name: optibuy-backup
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
@@ -8,28 +8,30 @@ workflows:
       groups:
         - android_signing
     scripts:
-      - name: Create OptiBuy Flutter AAB
+      - name: Create OptiBuy V2 Flutter AAB - Fresh Package Name
         script: |
-          echo "=== OptiBuy Flutter AAB Generation ==="
+          echo "=== OptiBuy V2 Flutter AAB Generation - Backup Strategy ==="
+          echo "Package Name: com.optibuy.collective.v2"
+          echo "Fresh keystore approach - no signing conflicts"
           
           # Install Flutter dependencies
           flutter doctor
           
-          # Create minimal Flutter project
-          flutter create optibuy_collective \
-            --org com.optibuy.collective \
+          # Create minimal Flutter project with new package name
+          flutter create optibuy_collective_v2 \
+            --org com.optibuy.collective.v2 \
             --android-language kotlin \
             --ios-language swift \
             --platforms android
           
-          cd optibuy_collective
+          cd optibuy_collective_v2
           
-          # Configure pubspec.yaml for realistic app with compatible versions
+          # Configure pubspec.yaml for V2
           cat > pubspec.yaml << 'EOF'
-          name: optibuy_collective
-          description: OptiBuy Collective Purchasing Platform for Turkish B2B Market
+          name: optibuy_collective_v2
+          description: OptiBuy Collective Purchasing Platform for Turkish B2B Market - V2
           publish_to: 'none'
-          version: 1.0.2+3
+          version: 2.0.0+1
           
           environment:
             sdk: '>=3.0.0 <4.0.0'
@@ -55,50 +57,30 @@ workflows:
               - assets/config/
           EOF
           
-          # Create release keystore - try multiple approaches to match Google Play fingerprint
-          echo "=== Creating Release Keystore - Multiple Attempts ==="
-          
-          # Attempt 1: Use exact same parameters as before but with slight variations
+          # Create fresh release keystore - no conflicts expected
+          echo "=== Creating Fresh Release Keystore for V2 ==="
           keytool -genkey -noprompt \
-            -alias optibuy-key \
-            -dname "CN=OptiBuy, OU=Collective Purchasing, O=OptiBuy Ltd, L=Istanbul, S=Istanbul, C=TR" \
-            -keystore release-key.keystore \
-            -storepass optibuy2025 \
-            -keypass optibuy2025 \
+            -alias optibuy-v2-key \
+            -dname "CN=OptiBuy V2, OU=Collective Purchasing, O=OptiBuy Ltd, L=Istanbul, S=Istanbul, C=TR" \
+            -keystore optibuy-v2.keystore \
+            -storepass optibuy2025v2 \
+            -keypass optibuy2025v2 \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000
           
-          echo "Keystore created successfully"
-          ls -la release-key.keystore
+          echo "Fresh V2 keystore created successfully"
+          ls -la optibuy-v2.keystore
           
-          # Check the fingerprint and compare with Google Play expected
-          echo "=== Verifying Keystore Fingerprint ==="
-          echo "Generated fingerprint:"
-          keytool -list -v -keystore release-key.keystore -storepass optibuy2025 -alias optibuy-key | grep "SHA1:"
-          echo "Expected by Google Play: D0:27:9C:50:41:D9:D7:D8:69:75:BC:14:59:C8:46:76:61:F1:1D:E3"
-          
-          # If first attempt doesn't match, try alternative approach
-          echo "=== Alternative Keystore Approach ==="
-          keytool -genkey -noprompt \
-            -alias optibuy-upload \
-            -dname "CN=OptiBuy Collective, OU=OptiBuy, O=OptiBuy Ltd, L=Istanbul, ST=Istanbul, C=TR" \
-            -keystore upload-key.keystore \
-            -storepass optibuy2025 \
-            -keypass optibuy2025 \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storetype JKS
-          
-          echo "Alternative keystore fingerprint:"
-          keytool -list -v -keystore upload-key.keystore -storepass optibuy2025 -alias optibuy-upload | grep "SHA1:"
+          # Display V2 keystore fingerprint (will be completely new)
+          echo "=== V2 Keystore Fingerprint (Fresh) ==="
+          keytool -list -v -keystore optibuy-v2.keystore -storepass optibuy2025v2 -alias optibuy-v2-key | grep -A3 -B3 "SHA1"
           
           # Create assets directories and files
           mkdir -p assets/images assets/config
-          echo '{"app_name": "OptiBuy", "version": "1.0.2", "market": "Turkish B2B"}' > assets/config/app_config.json
+          echo '{"app_name": "OptiBuy V2", "version": "2.0.0", "market": "Turkish B2B", "package": "v2"}' > assets/config/app_config.json
           
-          # Update Android app/build.gradle with modern configuration
+          # Update Android app/build.gradle with V2 package name
           cat > android/app/build.gradle << 'EOF'
           plugins {
               id "com.android.application"
@@ -116,16 +98,16 @@ workflows:
           
           def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
           if (flutterVersionCode == null) {
-              flutterVersionCode = '3'
+              flutterVersionCode = '1'
           }
           
           def flutterVersionName = localProperties.getProperty('flutter.versionName')
           if (flutterVersionName == null) {
-              flutterVersionName = '1.0.2'
+              flutterVersionName = '2.0.0'
           }
           
           android {
-              namespace "com.optibuy.collective"
+              namespace "com.optibuy.collective.v2"
               compileSdk 35
               ndkVersion "25.1.8937393"
           
@@ -140,15 +122,15 @@ workflows:
           
               signingConfigs {
                   release {
-                      storeFile file("../../release-key.keystore")
-                      storePassword "optibuy2025"
-                      keyAlias "optibuy-key"
-                      keyPassword "optibuy2025"
+                      storeFile file("../../optibuy-v2.keystore")
+                      storePassword "optibuy2025v2"
+                      keyAlias "optibuy-v2-key"
+                      keyPassword "optibuy2025v2"
                   }
               }
           
               defaultConfig {
-                  applicationId "com.optibuy.collective"
+                  applicationId "com.optibuy.collective.v2"
                   minSdk 21
                   targetSdk 35
                   versionCode flutterVersionCode.toInteger()
@@ -174,7 +156,7 @@ workflows:
           }
           EOF
           
-          # Update root build.gradle with proper configuration
+          # Update root build.gradle
           cat > android/build.gradle << 'EOF'
           buildscript {
               ext.kotlin_version = '1.9.10'
@@ -241,7 +223,7 @@ workflows:
           include ":app"
           EOF
           
-          # Update AndroidManifest.xml
+          # Update AndroidManifest.xml with V2 package
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               
@@ -251,7 +233,7 @@ workflows:
               <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
               
               <application
-                  android:label="OptiBuy"
+                  android:label="OptiBuy V2"
                   android:name="${applicationName}"
                   android:icon="@mipmap/ic_launcher"
                   android:theme="@style/LaunchTheme"
@@ -296,7 +278,7 @@ workflows:
           -dontwarn io.flutter.embedding.**
           EOF
           
-          # Create comprehensive main.dart
+          # Create V2 main.dart with updated branding
           cat > lib/main.dart << 'EOF'
           import 'package:flutter/material.dart';
           import 'package:http/http.dart' as http;
@@ -305,16 +287,16 @@ workflows:
           import 'dart:convert';
           
           void main() {
-            runApp(const OptiBuyApp());
+            runApp(const OptiBuyV2App());
           }
           
-          class OptiBuyApp extends StatelessWidget {
-            const OptiBuyApp({super.key});
+          class OptiBuyV2App extends StatelessWidget {
+            const OptiBuyV2App({super.key});
           
             @override
             Widget build(BuildContext context) {
               return MaterialApp(
-                title: 'OptiBuy - Collective Purchasing',
+                title: 'OptiBuy V2 - Collective Purchasing',
                 theme: ThemeData(
                   primarySwatch: Colors.blue,
                   useMaterial3: true,
@@ -350,7 +332,7 @@ workflows:
             Widget build(BuildContext context) {
               return Scaffold(
                 appBar: AppBar(
-                  title: const Text('OptiBuy Collective'),
+                  title: const Text('OptiBuy V2 Collective'),
                   backgroundColor: Colors.blue[700],
                   foregroundColor: Colors.white,
                 ),
@@ -400,12 +382,12 @@ workflows:
                             Icon(Icons.group, size: 64, color: Colors.blue[700]),
                             const SizedBox(height: 16),
                             const Text(
-                              'OptiBuy Collective',
+                              'OptiBuy V2 Collective',
                               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Turkish B2B Collective Purchasing Platform',
+                              'Turkish B2B Collective Purchasing Platform - Version 2.0',
                               style: TextStyle(fontSize: 16, color: Colors.grey),
                               textAlign: TextAlign.center,
                             ),
@@ -505,83 +487,78 @@ workflows:
           flutter clean
           flutter pub get
           
-          # Build the AAB using official Flutter command
-          echo "=== Building Android App Bundle ==="
+          # Build the V2 AAB
+          echo "=== Building Android App Bundle V2 ==="
           flutter build appbundle --release \
             --target-platform android-arm64,android-arm,android-x64 \
-            --build-name=1.0.2 \
-            --build-number=3 \
+            --build-name=2.0.0 \
+            --build-number=1 \
             --obfuscate \
             --split-debug-info=build/app/outputs/symbols
           
-          # Copy AAB to root for collection with verification
-          echo "=== Copying AAB file ==="
+          # Copy AAB to root
+          echo "=== Copying V2 AAB file ==="
           if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-keystore-test.aab
-              echo "AAB file copied successfully"
+              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-v2-fresh.aab
+              echo "V2 AAB file copied successfully"
           else
-              echo "ERROR: AAB file not found at expected location"
+              echo "ERROR: V2 AAB file not found"
               find . -name "*.aab" -type f
               exit 1
           fi
           
-          # Verify build
-          echo "=== Build Verification ==="
-          if [ -f "../optibuy-keystore-test.aab" ]; then
-              ls -lh ../optibuy-keystore-test.aab
-              echo "AAB Size: $(ls -lh ../optibuy-keystore-test.aab | awk '{print $5}')"
+          # Extract upload certificate for V2
+          echo "=== Extracting V2 Upload Certificate ==="
+          keytool -export -rfc \
+            -keystore ../optibuy-v2.keystore \
+            -storepass optibuy2025v2 \
+            -alias optibuy-v2-key \
+            -file ../optibuy-v2-upload-certificate.pem
+          
+          # Verify V2 build
+          echo "=== V2 Build Verification ==="
+          if [ -f "../optibuy-v2-fresh.aab" ]; then
+              ls -lh ../optibuy-v2-fresh.aab
+              echo "V2 AAB Size: $(ls -lh ../optibuy-v2-fresh.aab | awk '{print $5}')"
           else
-              echo "ERROR: AAB file missing after copy"
+              echo "ERROR: V2 AAB file missing after copy"
               exit 1
           fi
           
-          # Verify keystore used in build
-          echo "=== Final Keystore Verification ==="
-          if [ -f "../release-key.keystore" ]; then
-              echo "Primary keystore fingerprint:"
-              keytool -list -v -keystore ../release-key.keystore -storepass optibuy2025 -alias optibuy-key | grep -A1 -B1 "SHA1"
+          # Final V2 keystore verification
+          echo "=== V2 Final Keystore Verification ==="
+          if [ -f "../optibuy-v2.keystore" ]; then
+              echo "V2 keystore fingerprint (fresh - no conflicts):"
+              keytool -list -v -keystore ../optibuy-v2.keystore -storepass optibuy2025v2 -alias optibuy-v2-key | grep -A1 -B1 "SHA1"
           fi
           
-          if [ -f "../upload-key.keystore" ]; then
-              echo "Alternative keystore fingerprint:"
-              keytool -list -v -keystore ../upload-key.keystore -storepass optibuy2025 -alias optibuy-upload | grep -A1 -B1 "SHA1"
-          fi
-          
-          echo "Google Play expected: D0:27:9C:50:41:D9:D7:D8:69:75:BC:14:59:C8:46:76:61:F1:1D:E3"
-          
-          # Create success report with actual size
+          # Create V2 success report
           cd ..
-          if [ -f "optibuy-keystore-test.aab" ]; then
-              AAB_SIZE=$(ls -lh optibuy-keystore-test.aab | awk '{print $5}')
-              echo "SUCCESS: Flutter AAB Generated with Keystore Test" > keystore_test_report.txt
-              echo "File: optibuy-keystore-test.aab" >> keystore_test_report.txt
-              echo "Size: $AAB_SIZE" >> keystore_test_report.txt
-              echo "Version: 1.0.2 build 3" >> keystore_test_report.txt
-              echo "Target SHA1: D0:27:9C:50:41:D9:D7:D8:69:75:BC:14:59:C8:46:76:61:F1:1D:E3" >> keystore_test_report.txt
-              echo "Generated: $(date)" >> keystore_test_report.txt
-              echo "Status: Ready for Google Play Console Test" >> keystore_test_report.txt
+          if [ -f "optibuy-v2-fresh.aab" ]; then
+              AAB_SIZE=$(ls -lh optibuy-v2-fresh.aab | awk '{print $5}')
+              echo "SUCCESS: OptiBuy V2 Flutter AAB - Fresh Package" > optibuy_v2_success_report.txt
+              echo "File: optibuy-v2-fresh.aab" >> optibuy_v2_success_report.txt
+              echo "Package: com.optibuy.collective.v2" >> optibuy_v2_success_report.txt
+              echo "Size: $AAB_SIZE" >> optibuy_v2_success_report.txt
+              echo "Version: 2.0.0 build 1" >> optibuy_v2_success_report.txt
+              echo "Upload Certificate: optibuy-v2-upload-certificate.pem" >> optibuy_v2_success_report.txt
+              echo "Generated: $(date)" >> optibuy_v2_success_report.txt
+              echo "Status: Fresh package - no signing conflicts expected" >> optibuy_v2_success_report.txt
+              echo "Strategy: Backup solution while original app support request pending" >> optibuy_v2_success_report.txt
               
-              echo "=== Final Verification ==="
-              echo "AAB file present: YES"
-              echo "AAB file size: $AAB_SIZE"
-              echo "Signing: KEYSTORE TEST"
-              echo "Ready for upload test: YES"
+              echo "=== V2 Final Status ==="
+              echo "V2 AAB file present: YES"
+              echo "V2 AAB file size: $AAB_SIZE" 
+              echo "V2 Package name: com.optibuy.collective.v2"
+              echo "V2 Upload certificate: YES"
+              echo "V2 Ready for fresh Google Play listing: YES"
           else
-              echo "FAILURE: AAB file not generated" > keystore_test_report.txt
-              echo "Build process completed but AAB missing" >> keystore_test_report.txt
+              echo "FAILURE: V2 AAB file not generated" > optibuy_v2_success_report.txt
               exit 1
           fi
 
     artifacts:
-      - "optibuy-keystore-test.aab"
-      - "keystore_test_report.txt"
-      - "release-key.keystore"
-      - "upload-key.keystore"
-      
-    publishing:
-      email:
-        recipients:
-          - build@optibuy.com
-        notify:
-          success: true
-          failure: true
+      - "optibuy-v2-fresh.aab"
+      - "optibuy_v2_success_report.txt"
+      - "optibuy-v2.keystore"
+      - "optibuy-v2-upload-certificate.pem"
