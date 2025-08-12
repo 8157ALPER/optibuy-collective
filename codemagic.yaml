@@ -77,9 +77,24 @@ workflows:
 
       - name: Configure V2 Android Build
         script: |
+          # Ensure we're in the Flutter project directory
+          if [ ! -d "optibuy_collective_v2" ]; then
+            echo "ERROR: Flutter project not found. Creating it first..."
+            exit 1
+          fi
+          
+          cd optibuy_collective_v2
+          
           # Create assets directories and files
           mkdir -p assets/images assets/config
           echo '{"app_name": "OptiBuy V2", "version": "2.0.0", "market": "Turkish B2B", "package": "v2"}' > assets/config/app_config.json
+          
+          # Verify Android directory exists
+          if [ ! -d "android/app" ]; then
+            echo "ERROR: Android directory structure missing"
+            ls -la android/
+            exit 1
+          fi
           
           # Update Android app/build.gradle with V2 package name
           cat > android/app/build.gradle << 'EOF'
@@ -159,6 +174,9 @@ workflows:
 
       - name: Configure Android Settings and Manifest
         script: |
+          # Ensure we're in the Flutter project directory
+          cd optibuy_collective_v2
+          
           # Update root build.gradle
           cat > android/build.gradle << 'EOF'
           buildscript {
@@ -266,6 +284,9 @@ workflows:
 
       - name: Create V2 Flutter App and Build AAB
         script: |
+          # Ensure we're in the Flutter project directory
+          cd optibuy_collective_v2
+          
           # Create V2 main.dart with updated branding
           cat > lib/main.dart << 'EOF'
           import 'package:flutter/material.dart';
@@ -467,6 +488,12 @@ workflows:
             }
           }
           EOF
+          
+          # Verify Flutter project structure
+          echo "=== Flutter Project Structure ==="
+          ls -la
+          ls -la android/
+          ls -la android/app/
           
           # Get dependencies
           flutter pub get
