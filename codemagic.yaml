@@ -8,9 +8,9 @@ workflows:
       groups:
         - android_signing
     scripts:
-      - name: Create OptiBuy Flutter AAB
+      - name: Create OptiBuy Flutter AAB with Google Play App Signing
         script: |
-          echo "=== OptiBuy Flutter AAB Generation ==="
+          echo "=== OptiBuy Flutter AAB Generation - Google Play App Signing ==="
           
           # Install Flutter dependencies
           flutter doctor
@@ -29,7 +29,7 @@ workflows:
           name: optibuy_collective
           description: OptiBuy Collective Purchasing Platform for Turkish B2B Market
           publish_to: 'none'
-          version: 1.0.1+2
+          version: 1.0.2+3
           
           environment:
             sdk: '>=3.0.0 <4.0.0'
@@ -55,33 +55,37 @@ workflows:
               - assets/config/
           EOF
           
-          # CRITICAL: Use original keystore with exact parameters to match SHA1: D0:27:9C:50:41:D9:D7:D8:69:75:BC:14:59:C8:46:76:61:F1:1D:E3
-          echo "=== Creating Original Release Keystore ==="
-          # Try to recreate with specific parameters that would generate the expected fingerprint
-          # This requires using the exact same Distinguished Name and parameters
+          # Create NEW upload keystore for Google Play App Signing
+          echo "=== Creating Upload Keystore for Google Play App Signing ==="
           keytool -genkey -noprompt \
-            -alias optibuy-key \
-            -dname "CN=OptiBuy Collective, OU=OptiBuy, O=OptiBuy Ltd, L=Istanbul, S=Istanbul, C=TR" \
-            -keystore release-key.keystore \
-            -storepass optibuy2025 \
-            -keypass optibuy2025 \
+            -alias optibuy-upload \
+            -dname "CN=OptiBuy Upload, OU=OptiBuy, O=OptiBuy Ltd, L=Istanbul, S=Istanbul, C=TR" \
+            -keystore upload-key.keystore \
+            -storepass optibuy-upload-2025 \
+            -keypass optibuy-upload-2025 \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
             -storetype JKS
           
-          echo "Keystore created successfully"
-          ls -la release-key.keystore
+          echo "Upload keystore created successfully"
+          ls -la upload-key.keystore
           
-          # Verify keystore fingerprint matches expected
-          echo "=== Verifying Keystore Fingerprint ==="
-          keytool -list -v -keystore release-key.keystore -storepass optibuy2025 -alias optibuy-key | grep SHA1
+          # Generate upload certificate for Google Play registration
+          echo "=== Generating Upload Certificate ==="
+          keytool -export -rfc \
+            -keystore upload-key.keystore \
+            -alias optibuy-upload \
+            -storepass optibuy-upload-2025 \
+            -file upload-certificate.pem
+          
+          echo "Upload certificate created: upload-certificate.pem"
           
           # Create assets directories and files
           mkdir -p assets/images assets/config
-          echo '{"app_name": "OptiBuy", "version": "1.0.0", "market": "Turkish B2B"}' > assets/config/app_config.json
+          echo '{"app_name": "OptiBuy", "version": "1.0.2", "market": "Turkish B2B"}' > assets/config/app_config.json
           
-          # Update Android app/build.gradle with modern configuration
+          # Update Android app/build.gradle with upload keystore
           cat > android/app/build.gradle << 'EOF'
           plugins {
               id "com.android.application"
@@ -99,12 +103,12 @@ workflows:
           
           def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
           if (flutterVersionCode == null) {
-              flutterVersionCode = '2'
+              flutterVersionCode = '3'
           }
           
           def flutterVersionName = localProperties.getProperty('flutter.versionName')
           if (flutterVersionName == null) {
-              flutterVersionName = '1.0.1'
+              flutterVersionName = '1.0.2'
           }
           
           android {
@@ -123,10 +127,10 @@ workflows:
           
               signingConfigs {
                   release {
-                      storeFile file("../../release-key.keystore")
-                      storePassword "optibuy2025"
-                      keyAlias "optibuy-key"
-                      keyPassword "optibuy2025"
+                      storeFile file("../../upload-key.keystore")
+                      storePassword "optibuy-upload-2025"
+                      keyAlias "optibuy-upload"
+                      keyPassword "optibuy-upload-2025"
                   }
               }
           
@@ -488,19 +492,19 @@ workflows:
           flutter clean
           flutter pub get
           
-          # Build the AAB using official Flutter command
-          echo "=== Building Android App Bundle ==="
+          # Build the AAB using official Flutter command with upload keystore
+          echo "=== Building Android App Bundle with Upload Key ==="
           flutter build appbundle --release \
             --target-platform android-arm64,android-arm,android-x64 \
-            --build-name=1.0.1 \
-            --build-number=2 \
+            --build-name=1.0.2 \
+            --build-number=3 \
             --obfuscate \
             --split-debug-info=build/app/outputs/symbols
           
           # Copy AAB to root for collection with verification
           echo "=== Copying AAB file ==="
           if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-original-keystore.aab
+              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-google-play-signed.aab
               echo "AAB file copied successfully"
           else
               echo "ERROR: AAB file not found at expected location"
@@ -508,54 +512,65 @@ workflows:
               exit 1
           fi
           
+          # Copy certificate to root
+          cp upload-certificate.pem ../optibuy-upload-certificate.pem
+          
           # Verify build
           echo "=== Build Verification ==="
-          if [ -f "../optibuy-original-keystore.aab" ]; then
-              ls -lh ../optibuy-original-keystore.aab
-              echo "AAB Size: $(ls -lh ../optibuy-original-keystore.aab | awk '{print $5}')"
+          if [ -f "../optibuy-google-play-signed.aab" ]; then
+              ls -lh ../optibuy-google-play-signed.aab
+              echo "AAB Size: $(ls -lh ../optibuy-google-play-signed.aab | awk '{print $5}')"
           else
               echo "ERROR: AAB file missing after copy"
               exit 1
           fi
           
-          # Verify keystore used in build - CRITICAL CHECK
-          echo "=== Keystore Verification ==="
-          if [ -f "../release-key.keystore" ]; then
-              echo "Keystore fingerprint verification:"
-              keytool -list -v -keystore ../release-key.keystore -storepass optibuy2025 -alias optibuy-key | grep -A5 -B5 "SHA1"
-              echo "Expected SHA1: D0:27:9C:50:41:D9:D7:D8:69:75:BC:14:59:C8:46:76:61:F1:1D:E3"
+          # Verify upload keystore and certificate
+          echo "=== Upload Keystore Verification ==="
+          if [ -f "../upload-key.keystore" ]; then
+              echo "Upload keystore fingerprint:"
+              keytool -list -v -keystore ../upload-key.keystore -storepass optibuy-upload-2025 -alias optibuy-upload | grep -A5 -B5 "SHA1"
+          fi
+          
+          echo "=== Upload Certificate Created ==="
+          if [ -f "../optibuy-upload-certificate.pem" ]; then
+              echo "Certificate file: optibuy-upload-certificate.pem"
+              echo "Register this certificate in Google Play Console > App Signing"
           fi
           
           # Create success report with actual size
           cd ..
-          if [ -f "optibuy-original-keystore.aab" ]; then
-              AAB_SIZE=$(ls -lh optibuy-original-keystore.aab | awk '{print $5}')
-              echo "SUCCESS: Flutter AAB Generated with Original Keystore" > flutter_success_report.txt
-              echo "File: optibuy-original-keystore.aab" >> flutter_success_report.txt
-              echo "Size: $AAB_SIZE" >> flutter_success_report.txt
-              echo "Build Method: Flutter Official Build Tools" >> flutter_success_report.txt
-              echo "Target Platforms: android-arm64,android-arm,android-x64" >> flutter_success_report.txt
-              echo "Features: Release signing, Multi-platform, Optimized build" >> flutter_success_report.txt
-              echo "Keystore: release-key.keystore (optibuy-key)" >> flutter_success_report.txt
-              echo "Target SHA1: D0:27:9C:50:41:D9:D7:D8:69:75:BC:14:59:C8:46:76:61:F1:1D:E3" >> flutter_success_report.txt
-              echo "Generated: $(date)" >> flutter_success_report.txt
-              echo "Status: Google Play Console Ready - Original Keystore Signing" >> flutter_success_report.txt
+          if [ -f "optibuy-google-play-signed.aab" ]; then
+              AAB_SIZE=$(ls -lh optibuy-google-play-signed.aab | awk '{print $5}')
+              echo "SUCCESS: Flutter AAB Generated with Google Play App Signing" > google_play_success_report.txt
+              echo "File: optibuy-google-play-signed.aab" >> google_play_success_report.txt
+              echo "Certificate: optibuy-upload-certificate.pem" >> google_play_success_report.txt
+              echo "Size: $AAB_SIZE" >> google_play_success_report.txt
+              echo "Build Method: Flutter Official Build Tools" >> google_play_success_report.txt
+              echo "Target Platforms: android-arm64,android-arm,android-x64" >> google_play_success_report.txt
+              echo "Features: Upload key signing, Multi-platform, Optimized build" >> google_play_success_report.txt
+              echo "Keystore: upload-key.keystore (optibuy-upload)" >> google_play_success_report.txt
+              echo "Google Play App Signing: ENABLED - Upload Certificate Required" >> google_play_success_report.txt
+              echo "Generated: $(date)" >> google_play_success_report.txt
+              echo "Status: Ready for Google Play Console with Upload Certificate" >> google_play_success_report.txt
               
               echo "=== Final Verification ==="
               echo "AAB file present: YES"
               echo "AAB file size: $AAB_SIZE"
-              echo "Signing: ORIGINAL KEYSTORE"
+              echo "Signing: UPLOAD KEY (for Google Play App Signing)"
+              echo "Certificate: READY FOR REGISTRATION"
               echo "Ready for Google Play upload: YES"
           else
-              echo "FAILURE: AAB file not generated" > flutter_success_report.txt
-              echo "Build process completed but AAB missing" >> flutter_success_report.txt
+              echo "FAILURE: AAB file not generated" > google_play_success_report.txt
+              echo "Build process completed but AAB missing" >> google_play_success_report.txt
               exit 1
           fi
 
     artifacts:
-      - "optibuy-original-keystore.aab"
-      - "flutter_success_report.txt"
-      - "release-key.keystore"
+      - "optibuy-google-play-signed.aab"
+      - "optibuy-upload-certificate.pem"
+      - "google_play_success_report.txt"
+      - "upload-key.keystore"
       
     publishing:
       email:
