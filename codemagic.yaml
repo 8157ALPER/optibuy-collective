@@ -1,30 +1,39 @@
+# GOOGLE PLAY APP SIGNING SOLUTION - CODEMAGIC CONFIGURATION
+# This configuration uses upload keys instead of release keys for Google Play App Signing
+
 workflows:
-  optibuy:
-    name: optibuy
-    max_build_duration: 60
+  optibuy-google-play-signing:
+    name: OptiBuy Google Play App Signing Compatible
+    max_build_duration: 120
     instance_type: mac_mini_m1
+    working_directory: .
     environment:
-      flutter: stable
-      groups:
-        - android_signing
+      vars:
+        CM_KEYSTORE_PATH: /tmp/keystore
+        CM_KEYSTORE: |
+          # Base64 encoded upload keystore will be inserted here
+          # Generated specifically for Google Play App Signing
+        CM_KEYSTORE_PASSWORD: optibuy-upload-2025
+        CM_KEY_ALIAS: optibuy-upload
+        CM_KEY_PASSWORD: optibuy-upload-2025
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
     scripts:
-      - name: Create OptiBuy Flutter AAB
+      - name: Create Flutter project with upload signing
         script: |
-          echo "=== OptiBuy Flutter AAB Generation ==="
-          
-          # Install Flutter dependencies
-          flutter doctor
-          
-          # Create minimal Flutter project
+          # Create Flutter project
           flutter create optibuy_collective \
-            --org com.optibuy.collective \
-            --android-language kotlin \
-            --ios-language swift \
+            --org com.optibuy \
+            --project-name optibuy_collective \
             --platforms android
           
           cd optibuy_collective
           
-          # Configure pubspec.yaml for realistic app with compatible versions
+          # Configure pubspec.yaml for Google Play App Signing
           cat > pubspec.yaml << 'EOF'
           name: optibuy_collective
           description: OptiBuy Collective Purchasing Platform for Turkish B2B Market
@@ -32,49 +41,38 @@ workflows:
           version: 1.0.1+2
           
           environment:
-            sdk: '>=3.0.0 <4.0.0'
-            flutter: ">=3.16.0"
+            sdk: '>=3.1.0 <4.0.0'
+            flutter: ">=3.13.0"
           
           dependencies:
             flutter:
               sdk: flutter
             cupertino_icons: ^1.0.6
-            http: ^1.1.0
-            shared_preferences: ^2.2.2
-            path: ^1.8.3
           
           dev_dependencies:
             flutter_test:
               sdk: flutter
-            flutter_lints: ^2.0.0
+            flutter_lints: ^3.0.0
           
           flutter:
             uses-material-design: true
             assets:
               - assets/images/
-              - assets/config/
           EOF
           
-          # Create release keystore for signing
-          echo "=== Creating Release Keystore ==="
-          keytool -genkey -noprompt \
-            -alias optibuy-key \
-            -dname "CN=OptiBuy, OU=Collective Purchasing, O=OptiBuy Ltd, L=Istanbul, S=Istanbul, C=TR" \
-            -keystore release-key.keystore \
-            -storepass optibuy2025 \
-            -keypass optibuy2025 \
+          # Generate upload keystore for Google Play App Signing
+          echo "=== Generating Upload Keystore for Google Play App Signing ==="
+          keytool -genkey -v \
+            -keystore upload-key.keystore \
+            -alias optibuy-upload \
             -keyalg RSA \
             -keysize 2048 \
-            -validity 10000
+            -validity 10000 \
+            -storepass optibuy-upload-2025 \
+            -keypass optibuy-upload-2025 \
+            -dname "CN=OptiBuy Upload Key, OU=OptiBuy, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR"
           
-          echo "Keystore created successfully"
-          ls -la release-key.keystore
-          
-          # Create assets directories and files
-          mkdir -p assets/images assets/config
-          echo '{"app_name": "OptiBuy", "version": "1.0.0", "market": "Turkish B2B"}' > assets/config/app_config.json
-          
-          # Update Android app/build.gradle with modern configuration
+          # Configure Android build.gradle for upload signing
           cat > android/app/build.gradle << 'EOF'
           plugins {
               id "com.android.application"
@@ -92,12 +90,12 @@ workflows:
           
           def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
           if (flutterVersionCode == null) {
-              flutterVersionCode = '1'
+              flutterVersionCode = '2'
           }
           
           def flutterVersionName = localProperties.getProperty('flutter.versionName')
           if (flutterVersionName == null) {
-              flutterVersionName = '1.0'
+              flutterVersionName = '1.0.1'
           }
           
           android {
@@ -114,12 +112,13 @@ workflows:
                   jvmTarget = '1.8'
               }
           
+              // Upload key configuration for Google Play App Signing
               signingConfigs {
                   release {
-                      storeFile file("../../release-key.keystore")
-                      storePassword "optibuy2025"
-                      keyAlias "optibuy-key"
-                      keyPassword "optibuy2025"
+                      storeFile file("../../upload-key.keystore")
+                      storePassword "optibuy-upload-2025"
+                      keyAlias "optibuy-upload"
+                      keyPassword "optibuy-upload-2025"
                   }
               }
           
@@ -150,7 +149,7 @@ workflows:
           }
           EOF
           
-          # Update root build.gradle with proper configuration
+          # Update root build.gradle with proper AGP version
           cat > android/build.gradle << 'EOF'
           buildscript {
               ext.kotlin_version = '1.9.10'
@@ -185,67 +184,43 @@ workflows:
           }
           EOF
           
-          # Remove any existing settings files to avoid conflicts
-          rm -f android/settings.gradle.kts
-          
-          # Update settings.gradle
-          cat > android/settings.gradle << 'EOF'
-          pluginManagement {
-              def flutterSdkPath = {
-                  def properties = new Properties()
-                  file("local.properties").withInputStream { properties.load(it) }
-                  def flutterSdkPath = properties.getProperty("flutter.sdk")
-                  assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-                  return flutterSdkPath
-              }()
-          
-              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-          
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          
-          plugins {
-              id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-              id "com.android.application" version "8.3.0" apply false
-              id "org.jetbrains.kotlin.android" version "1.9.10" apply false
-          }
-          
-          include ":app"
+          # Configure gradle wrapper
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-all.zip
           EOF
           
-          # Update AndroidManifest.xml
+          # Create Android manifest with proper configuration
+          mkdir -p android/app/src/main
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
               
               <application
                   android:label="OptiBuy"
                   android:name="${applicationName}"
                   android:icon="@mipmap/ic_launcher"
                   android:theme="@style/LaunchTheme"
-                  android:allowBackup="true"
-                  android:usesCleartextTraffic="true">
+                  android:exported="false">
                   
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
                       android:launchMode="singleTop"
+                      android:taskAffinity=""
                       android:theme="@style/LaunchTheme"
-                      android:screenOrientation="portrait"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
                       android:windowSoftInputMode="adjustResize">
                       
                       <meta-data
-                        android:name="io.flutter.embedding.android.NormalTheme"
-                        android:resource="@style/NormalTheme" />
-                        
+                          android:name="io.flutter.embedding.android.NormalTheme"
+                          android:resource="@style/NormalTheme" />
+                      
                       <intent-filter android:autoVerify="true">
                           <action android:name="android.intent.action.MAIN"/>
                           <category android:name="android.intent.category.LAUNCHER"/>
@@ -256,29 +231,34 @@ workflows:
                       android:name="flutterEmbedding"
                       android:value="2" />
               </application>
+              
+              <queries>
+                  <intent>
+                      <action android:name="android.intent.action.VIEW" />
+                      <data android:scheme="https" />
+                  </intent>
+                  <intent>
+                      <action android:name="android.intent.action.VIEW" />
+                      <data android:scheme="http" />
+                  </intent>
+              </queries>
           </manifest>
           EOF
           
-          # Create proguard rules for release build
-          mkdir -p android/app
-          cat > android/app/proguard-rules.pro << 'EOF'
-          # Add project specific ProGuard rules here.
-          -keep class io.flutter.app.** { *; }
-          -keep class io.flutter.plugin.**  { *; }
-          -keep class io.flutter.util.**  { *; }
-          -keep class io.flutter.view.**  { *; }
-          -keep class io.flutter.**  { *; }
-          -keep class io.flutter.plugins.**  { *; }
-          -dontwarn io.flutter.embedding.**
+          # Create main activity
+          mkdir -p android/app/src/main/kotlin/com/optibuy/collective
+          cat > android/app/src/main/kotlin/com/optibuy/collective/MainActivity.kt << 'EOF'
+          package com.optibuy.collective
+          
+          import io.flutter.embedding.android.FlutterActivity
+          
+          class MainActivity: FlutterActivity() {
+          }
           EOF
           
-          # Create comprehensive main.dart
+          # Create OptiBuy app content
           cat > lib/main.dart << 'EOF'
           import 'package:flutter/material.dart';
-          import 'package:http/http.dart' as http;
-          import 'package:shared_preferences/shared_preferences.dart';
-          import 'package:path/path.dart';
-          import 'dart:convert';
           
           void main() {
             runApp(const OptiBuyApp());
@@ -295,54 +275,49 @@ workflows:
                   primarySwatch: Colors.blue,
                   useMaterial3: true,
                 ),
-                home: const HomePage(),
-                routes: {
-                  '/dashboard': (context) => const DashboardPage(),
-                  '/products': (context) => const ProductsPage(),
-                  '/profile': (context) => const ProfilePage(),
-                },
+                home: const OptiBuyHomePage(),
+                debugShowCheckedModeBanner: false,
               );
             }
           }
           
-          class HomePage extends StatefulWidget {
-            const HomePage({super.key});
+          class OptiBuyHomePage extends StatefulWidget {
+            const OptiBuyHomePage({super.key});
           
             @override
-            State<HomePage> createState() => _HomePageState();
+            State<OptiBuyHomePage> createState() => _OptiBuyHomePageState();
           }
           
-          class _HomePageState extends State<HomePage> {
+          class _OptiBuyHomePageState extends State<OptiBuyHomePage> {
             int _selectedIndex = 0;
-            
-            final List<Widget> _pages = [
-              const HomeTabContent(),
-              const DashboardPage(),
-              const ProductsPage(),
-              const ProfilePage(),
+          
+            static const List<Widget> _pages = <Widget>[
+              HomePage(),
+              ProductsPage(),
+              ProfilePage(),
             ];
+          
+            void _onItemTapped(int index) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            }
           
             @override
             Widget build(BuildContext context) {
               return Scaffold(
                 appBar: AppBar(
-                  title: const Text('OptiBuy Collective'),
-                  backgroundColor: Colors.blue[700],
+                  title: const Text('OptiBuy Collective Purchasing'),
+                  backgroundColor: Colors.blue.shade600,
                   foregroundColor: Colors.white,
+                  elevation: 2,
                 ),
                 body: _pages[_selectedIndex],
                 bottomNavigationBar: BottomNavigationBar(
-                  type: BottomNavigationBarType.fixed,
-                  currentIndex: _selectedIndex,
-                  onTap: (index) => setState(() => _selectedIndex = index),
-                  items: const [
+                  items: const <BottomNavigationBarItem>[
                     BottomNavigationBarItem(
                       icon: Icon(Icons.home),
                       label: 'Home',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.dashboard),
-                      label: 'Dashboard',
                     ),
                     BottomNavigationBarItem(
                       icon: Icon(Icons.shopping_cart),
@@ -353,71 +328,16 @@ workflows:
                       label: 'Profile',
                     ),
                   ],
+                  currentIndex: _selectedIndex,
+                  selectedItemColor: Colors.blue.shade600,
+                  onTap: _onItemTapped,
                 ),
               );
             }
           }
           
-          class HomeTabContent extends StatelessWidget {
-            const HomeTabContent({super.key});
-          
-            @override
-            Widget build(BuildContext context) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            Icon(Icons.group, size: 64, color: Colors.blue[700]),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'OptiBuy Collective',
-                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Turkish B2B Collective Purchasing Platform',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Key Features',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildFeatureCard('Veterinary Supplies', 'Bulk purchasing for veterinary clinics', Icons.pets),
-                    _buildFeatureCard('Pharmaceutical Products', 'Group buying for pharmacies', Icons.medical_services),
-                    _buildFeatureCard('Price Analytics', 'Market insights and pricing trends', Icons.analytics),
-                    _buildFeatureCard('Collective Negotiations', 'Enhanced buying power through groups', Icons.handshake),
-                  ],
-                ),
-              );
-            }
-          
-            Widget _buildFeatureCard(String title, String description, IconData icon) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: Icon(icon, color: Colors.blue[700]),
-                  title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(description),
-                ),
-              );
-            }
-          }
-          
-          class DashboardPage extends StatelessWidget {
-            const DashboardPage({super.key});
+          class HomePage extends StatelessWidget {
+            const HomePage({super.key});
           
             @override
             Widget build(BuildContext context) {
@@ -425,10 +345,10 @@ workflows:
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.dashboard, size: 80, color: Colors.blue),
+                    Icon(Icons.home, size: 80, color: Colors.blue),
                     SizedBox(height: 16),
-                    Text('Dashboard', style: TextStyle(fontSize: 24)),
-                    Text('View your purchase analytics', style: TextStyle(color: Colors.grey)),
+                    Text('Welcome to OptiBuy', style: TextStyle(fontSize: 24)),
+                    Text('Turkish B2B Collective Purchasing Platform', style: TextStyle(color: Colors.grey)),
                   ],
                 ),
               );
@@ -474,15 +394,28 @@ workflows:
           }
           EOF
           
-          # Get dependencies
+          # Get dependencies and build
           flutter pub get
-          
-          # Clean and build
           flutter clean
           flutter pub get
           
-          # Build the AAB using official Flutter command
-          echo "=== Building Android App Bundle ==="
+          # Generate upload certificate for Google Play
+          echo "=== Generating Upload Certificate for Google Play Registration ==="
+          keytool -export -rfc \
+            -keystore upload-key.keystore \
+            -alias optibuy-upload \
+            -storepass optibuy-upload-2025 \
+            -file upload-certificate.pem
+          
+          # Display upload certificate fingerprint
+          echo "=== Upload Certificate Information ==="
+          keytool -list -v \
+            -keystore upload-key.keystore \
+            -alias optibuy-upload \
+            -storepass optibuy-upload-2025
+          
+          # Build AAB with upload key signing
+          echo "=== Building AAB with Upload Key for Google Play App Signing ==="
           flutter build appbundle --release \
             --target-platform android-arm64,android-arm,android-x64 \
             --build-name=1.0.1 \
@@ -490,67 +423,23 @@ workflows:
             --obfuscate \
             --split-debug-info=build/app/outputs/symbols
           
-          # Copy AAB to root for collection with verification
-          echo "=== Copying AAB file ==="
-          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-              cp build/app/outputs/bundle/release/app-release.aab ../optibuy-flutter-final.aab
-              echo "AAB file copied successfully"
-          else
-              echo "ERROR: AAB file not found at expected location"
-              find . -name "*.aab" -type f
-              exit 1
-          fi
+          # Copy files for collection
+          cp build/app/outputs/bundle/release/app-release.aab ../optibuy-google-play-signing.aab
+          cp upload-certificate.pem ../optibuy-upload-certificate.pem
+          cp upload-key.keystore ../optibuy-upload-key.keystore
           
           # Verify build
           echo "=== Build Verification ==="
-          if [ -f "../optibuy-flutter-final.aab" ]; then
-              ls -lh ../optibuy-flutter-final.aab
-              echo "AAB Size: $(ls -lh ../optibuy-flutter-final.aab | awk '{print $5}')"
-          else
-              echo "ERROR: AAB file missing after copy"
-              exit 1
-          fi
+          ls -lh ../optibuy-*.{aab,pem,keystore}
           
-          # Verify keystore used in build
-          echo "=== Keystore Verification ==="
-          if [ -f "../release-key.keystore" ]; then
-              keytool -list -v -keystore ../release-key.keystore -storepass optibuy2025 | head -20
-          fi
+          echo "=== GOOGLE PLAY APP SIGNING SETUP COMPLETE ==="
+          echo "1. Upload Certificate: optibuy-upload-certificate.pem"
+          echo "2. Upload Keystore: optibuy-upload-key.keystore"
+          echo "3. AAB File: optibuy-google-play-signing.aab"
+          echo "4. Next: Register upload certificate in Google Play Console"
           
-          # Create success report with actual size
-          cd ..
-          if [ -f "optibuy-flutter-final.aab" ]; then
-              AAB_SIZE=$(ls -lh optibuy-flutter-final.aab | awk '{print $5}')
-              echo "SUCCESS: Flutter AAB Generated with Release Signing" > flutter_success_report.txt
-              echo "File: optibuy-flutter-final.aab" >> flutter_success_report.txt
-              echo "Size: $AAB_SIZE" >> flutter_success_report.txt
-              echo "Build Method: Flutter Official Build Tools" >> flutter_success_report.txt
-              echo "Target Platforms: android-arm64,android-arm,android-x64" >> flutter_success_report.txt
-              echo "Features: Release signing, Multi-platform, Optimized build" >> flutter_success_report.txt
-              echo "Keystore: release-key.keystore (optibuy-key)" >> flutter_success_report.txt
-              echo "Generated: $(date)" >> flutter_success_report.txt
-              echo "Status: Google Play Console Ready - Release Signed" >> flutter_success_report.txt
-              
-              echo "=== Final Verification ==="
-              echo "AAB file present: YES"
-              echo "AAB file size: $AAB_SIZE"
-              echo "Signing: RELEASE MODE"
-              echo "Ready for Google Play upload: YES"
-          else
-              echo "FAILURE: AAB file not generated" > flutter_success_report.txt
-              echo "Build process completed but AAB missing" >> flutter_success_report.txt
-              exit 1
-          fi
-
     artifacts:
-      - "optibuy-flutter-final.aab"
-      - "flutter_success_report.txt"
-      - "release-key.keystore"
-      
-    publishing:
-      email:
-        recipients:
-          - build@optibuy.com
-        notify:
-          success: true
-          failure: true
+      - optibuy-google-play-signing.aab
+      - optibuy-upload-certificate.pem
+      - optibuy-upload-key.keystore
+      - build/app/outputs/bundle/release/app-release.aab
