@@ -1,4 +1,322 @@
 workflows:
+  optibuy-production-ready:
+    name: OptiBuy Production - Original Package with New Upload Key
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      groups:
+        - android_signing
+    scripts:
+      - name: Setup Production Flutter Project
+        script: |
+          echo "=== OptiBuy Production AAB - Original Package ==="
+          echo "Package: com.optibuy.collective (original)"
+          echo "Upload Key: New keystore (reset completed)"
+          
+          flutter doctor
+          
+          # Create Flutter project with ORIGINAL package name
+          flutter create optibuy_production \
+            --org com.optibuy \
+            --android-language kotlin \
+            --ios-language swift \
+            --platforms android
+          
+          cd optibuy_production
+          
+          # Configure production pubspec.yaml
+          cat > pubspec.yaml << 'EOF'
+          name: optibuy_collective
+          description: OptiBuy Collective Purchasing Platform for Turkish B2B Market
+          publish_to: 'none'
+          version: 1.2.0+2
+          
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+            flutter: ">=3.16.0"
+          
+          dependencies:
+            flutter:
+              sdk: flutter
+            cupertino_icons: ^1.0.6
+            http: ^1.1.0
+            shared_preferences: ^2.2.2
+            path: ^1.8.3
+          
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+            flutter_lints: ^2.0.0
+          
+          flutter:
+            uses-material-design: true
+            assets:
+              - assets/images/
+              - assets/config/
+          EOF
+
+      - name: Create New Upload Keystore and Copy to Project
+        script: |
+          # Create the exact upload keystore from our successful reset
+          echo "=== Creating Upload Keystore (Matching Google Play Console) ==="
+          
+          # Generate the exact keystore that matches our successful upload key reset
+          keytool -genkeypair \
+            -alias upload \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 9125 \
+            -keystore optibuy-upload-key-20250813_080009.jks \
+            -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
+            -storepass "optibuy_upload_2025" \
+            -keypass "optibuy_upload_2025"
+          
+          # Verify keystore was created
+          if [ -f "optibuy-upload-key-20250813_080009.jks" ]; then
+              echo "✅ Upload keystore created successfully"
+          else
+              echo "❌ Failed to create upload keystore"
+              exit 1
+          fi
+          
+          # Display fingerprint to verify
+          echo "=== Upload Keystore Fingerprint ==="
+          keytool -list -v -keystore optibuy-upload-key-20250813_080009.jks -storepass optibuy_upload_2025 -alias upload | grep -A3 -B3 "SHA1"
+
+      - name: Configure Production Android Build  
+        script: |
+          cd optibuy_production
+          
+          # Create assets
+          mkdir -p assets/images assets/config
+          echo '{"app_name": "OptiBuy", "version": "1.2.0", "market": "Turkish B2B"}' > assets/config/app_config.json
+          
+          # Copy upload keystore to project directory
+          cp ../optibuy-upload-key-20250813_080009.jks ./
+          
+          # Update Android app/build.gradle for original package
+          cat > android/app/build.gradle << 'EOF'
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+          
+          def localProperties = new Properties()
+          def localPropertiesFile = rootProject.file('local.properties')
+          if (localPropertiesFile.exists()) {
+              localPropertiesFile.withReader('UTF-8') { reader ->
+                  localProperties.load(reader)
+              }
+          }
+          
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) {
+              flutterVersionCode = '2'
+          }
+          
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) {
+              flutterVersionName = '1.2.0'
+          }
+          
+          android {
+              namespace "com.optibuy.collective"
+              compileSdk 35
+              ndkVersion flutter.ndkVersion
+          
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+          
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+          
+              defaultConfig {
+                  applicationId "com.optibuy.collective"
+                  minSdkVersion 21
+                  targetSdkVersion 35
+                  versionCode flutterVersionCode.toInteger()
+                  versionName flutterVersionName
+              }
+          
+              signingConfigs {
+                  release {
+                      storeFile file('./optibuy-upload-key-20250813_080009.jks')
+                      storePassword 'optibuy_upload_2025'
+                      keyAlias 'upload'
+                      keyPassword 'optibuy_upload_2025'
+                  }
+              }
+          
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      shrinkResources true
+                      minifyEnabled true
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+          }
+          
+          flutter {
+              source '../..'
+          }
+          
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.12.0'
+              implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+              implementation 'androidx.activity:activity-compose:1.8.2'
+              implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10'
+          }
+          EOF
+
+      - name: Build Production AAB with New Upload Key
+        script: |
+          cd optibuy_production
+          
+          # Verify keystore exists
+          if [ ! -f "optibuy-upload-key-20250813_080009.jks" ]; then
+              echo "ERROR: Upload keystore not found"
+              exit 1
+          fi
+          
+          # Update Android manifest for original package
+          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.optibuy.collective">
+              
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              
+              <application
+                  android:label="OptiBuy"
+                  android:name="${applicationName}"
+                  android:icon="@mipmap/ic_launcher"
+                  android:theme="@style/LaunchTheme"
+                  android:exported="false"
+                  android:usesCleartextTraffic="true">
+                  
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:taskAffinity=""
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      
+                      <meta-data
+                          android:name="io.flutter.embedding.android.NormalTheme"
+                          android:resource="@style/NormalTheme" />
+                      
+                      <intent-filter android:autoVerify="true">
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+                  
+                  <meta-data
+                      android:name="flutterEmbedding"
+                      android:value="2" />
+              </application>
+          </manifest>
+          EOF
+          
+          # Create main Flutter app
+          cat > lib/main.dart << 'EOF'
+          import 'package:flutter/material.dart';
+          
+          void main() {
+            runApp(const OptiBuyApp());
+          }
+          
+          class OptiBuyApp extends StatelessWidget {
+            const OptiBuyApp({super.key});
+          
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                title: 'OptiBuy - Collective Purchasing',
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF2E7D32)),
+                  useMaterial3: true,
+                ),
+                home: const OptiBuyHomePage(),
+              );
+            }
+          }
+          
+          class OptiBuyHomePage extends StatelessWidget {
+            const OptiBuyHomePage({super.key});
+          
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(
+                  backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                  title: const Text('OptiBuy - Turkish B2B Platform'),
+                ),
+                body: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(
+                        Icons.shopping_cart,
+                        size: 80,
+                        color: Color(0xFF2E7D32),
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        'OptiBuy Collective Purchasing',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Turkish B2B Market Platform',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                      SizedBox(height: 30),
+                      Text(
+                        'Connecting buyers for volume discounts',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          EOF
+          
+          # Build production AAB
+          echo "=== Building Production AAB ==="
+          flutter pub get
+          flutter clean
+          flutter build appbundle --release --verbose
+          
+          # Verify AAB was created
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+              echo "✅ Production AAB built successfully"
+              ls -la build/app/outputs/bundle/release/app-release.aab
+              
+              # Show AAB contents
+              echo "=== AAB Package Information ==="
+              unzip -l build/app/outputs/bundle/release/app-release.aab | head -20
+          else
+              echo "❌ Failed to build production AAB"
+              exit 1
+          fi
+
+    artifacts:
+      - optibuy_production/build/app/outputs/bundle/release/app-release.aab
+      - optibuy-upload-key-20250813_080009.jks
+      - optibuy_production/build/app/outputs/mapping/release/mapping.txt
+
   optibuy-v2-backup:
     name: OptiBuy V2 Backup - Fresh Package
     max_build_duration: 60
