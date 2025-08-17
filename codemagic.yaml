@@ -56,7 +56,7 @@ workflows:
               - assets/config/
           EOF
 
-      - name: Create New Upload Keystore and Copy to Project
+      - name: Create Production Upload Keystore
         script: |
           # Create the exact upload keystore from our successful reset
           echo "=== Creating Upload Keystore (Matching Google Play Console) ==="
@@ -67,13 +67,13 @@ workflows:
             -keyalg RSA \
             -keysize 2048 \
             -validity 9125 \
-            -keystore optibuy-upload-key-20250813_080009.jks \
+            -keystore optibuy-upload-key-production.jks \
             -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
             -storepass "optibuy_upload_2025" \
             -keypass "optibuy_upload_2025"
           
           # Verify keystore was created
-          if [ -f "optibuy-upload-key-20250813_080009.jks" ]; then
+          if [ -f "optibuy-upload-key-production.jks" ]; then
               echo "✅ Upload keystore created successfully"
           else
               echo "❌ Failed to create upload keystore"
@@ -82,7 +82,7 @@ workflows:
           
           # Display fingerprint to verify
           echo "=== Upload Keystore Fingerprint ==="
-          keytool -list -v -keystore optibuy-upload-key-20250813_080009.jks -storepass optibuy_upload_2025 -alias upload | grep -A3 -B3 "SHA1"
+          keytool -list -v -keystore optibuy-upload-key-production.jks -storepass optibuy_upload_2025 -alias upload | grep -A3 -B3 "SHA1"
 
       - name: Configure Production Android Build  
         script: |
@@ -93,7 +93,7 @@ workflows:
           echo '{"app_name": "OptiBuy", "version": "1.2.0", "market": "Turkish B2B"}' > assets/config/app_config.json
           
           # Copy upload keystore to project directory
-          cp ../optibuy-upload-key-20250813_080009.jks ./
+          cp ../optibuy-upload-key-production.jks ./
           
           # Update Android app/build.gradle for original package
           cat > android/app/build.gradle << 'EOF'
@@ -145,7 +145,7 @@ workflows:
           
               signingConfigs {
                   release {
-                      storeFile file('./optibuy-upload-key-20250813_080009.jks')
+                      storeFile file('./optibuy-upload-key-production.jks')
                       storePassword 'optibuy_upload_2025'
                       keyAlias 'upload'
                       keyPassword 'optibuy_upload_2025'
@@ -179,7 +179,7 @@ workflows:
           cd optibuy_production
           
           # Verify keystore exists
-          if [ ! -f "optibuy-upload-key-20250813_080009.jks" ]; then
+          if [ ! -f "optibuy-upload-key-production.jks" ]; then
               echo "ERROR: Upload keystore not found"
               exit 1
           fi
@@ -314,35 +314,8 @@ workflows:
 
     artifacts:
       - optibuy_production/build/app/outputs/bundle/release/app-release.aab
-      - optibuy-upload-key-20250813_080009.jks
+      - optibuy-upload-key-production.jks
       - optibuy_production/build/app/outputs/mapping/release/mapping.txt
-
-  optibuy-v2-backup:
-    name: OptiBuy V2 Backup - Fresh Package
-    max_build_duration: 60
-    instance_type: mac_mini_m1
-    environment:
-      flutter: stable
-      groups:
-        - android_signing
-    scripts:
-      - name: Create OptiBuy V2 Flutter AAB - Fresh Package Name
-        script: |
-          echo "=== OptiBuy V2 Flutter AAB Generation - Fresh Package ==="
-          echo "Package Name: com.optibuy.collective.v2"
-          echo "Strategy: Fresh start to avoid signing conflicts"
-          
-          # Install Flutter dependencies
-          flutter doctor
-          
-          # Create minimal Flutter project with new package name
-          flutter create optibuy_collective_v2 \
-            --org com.optibuy.collective.v2 \
-            --android-language kotlin \
-            --ios-language swift \
-            --platforms android
-          
-          cd optibuy_collective_v2
           
           # Configure pubspec.yaml for V2
           cat > pubspec.yaml << 'EOF'
