@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy React Native - YAML Syntax Fixed
+    name: OptiBuy React Native - Simple Working
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -10,509 +10,256 @@ workflows:
         PACKAGE_NAME: "com.optibuy.collective"
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
     scripts:
-      - name: Create React Native Project with Error Handling
+      - name: Create React Native Project Structure
         script: |
-          echo "=== Creating React Native TypeScript Project with Directory Verification ==="
+          echo "=== Creating React Native Project Structure ==="
           
           npm install -g @react-native-community/cli
           
-          echo "Creating React Native project..."
-          npx react-native@latest init OptiBuy --template react-native-template-typescript --skip-install
+          echo "Creating OptiBuy directory..."
+          mkdir -p OptiBuy
+          cd OptiBuy
           
-          if [ ! -d "OptiBuy" ]; then
-            echo "OptiBuy directory not created, creating manually..."
-            mkdir -p OptiBuy
-            cd OptiBuy
-            
-            npm init -y
-            
-            mkdir -p android/app/src/main/{java/com/optibuy/collective,res/values,assets}
-            mkdir -p android/gradle/wrapper
-            mkdir -p ios
-            
-            cat > package.json <<'EOF'
-{
-  "name": "OptiBuy",
-  "version": "1.2.0",
-  "private": true,
-  "scripts": {
-    "android": "react-native run-android",
-    "bundle:android": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle",
-    "start": "react-native start",
-    "test": "jest",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
-  },
-  "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.72.6"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
-    "@react-native/eslint-config": "^0.72.2",
-    "@react-native/metro-config": "^0.72.11",
-    "@tsconfig/react-native": "^3.0.0",
-    "@types/react": "^18.0.24",
-    "@types/react-test-renderer": "^18.0.0",
-    "babel-jest": "^29.2.1",
-    "eslint": "^8.19.0",
-    "jest": "^29.2.1",
-    "metro-react-native-babel-preset": "0.76.8",
-    "prettier": "^2.4.1",
-    "react-test-renderer": "18.2.0",
-    "typescript": "4.8.4"
-  },
-  "jest": {
-    "preset": "react-native"
-  }
-}
-EOF
-            
-            cat > index.js <<'EOF'
-import {AppRegistry} from 'react-native';
-import App from './App';
-import {name as appName} from './app.json';
-
-AppRegistry.registerComponent(appName, () => App);
-EOF
-            
-            cat > app.json <<'EOF'
-{
-  "name": "OptiBuy",
-  "displayName": "OptiBuy"
-}
-EOF
-            
-          else
-            echo "OptiBuy directory created successfully"
-            cd OptiBuy
-          fi
+          npm init -y
           
-          cat > App.tsx <<'EOF'
-import React from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-  useColorScheme,
-} from 'react-native';
-
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f9fa',
-    flex: 1,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <View style={styles.container}>
-          <Text style={[styles.title, {color: isDarkMode ? '#fff' : '#000'}]}>
-            OptiBuy
-          </Text>
-          <Text style={[styles.subtitle, {color: isDarkMode ? '#ccc' : '#666'}]}>
-            Collective Purchasing Platform
-          </Text>
+          mkdir -p android/app/src/main/java/com/optibuy/collective
+          mkdir -p android/app/src/main/res/values
+          mkdir -p android/app/src/main/assets
+          mkdir -p android/gradle/wrapper
           
-          <View style={styles.featuresContainer}>
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>🛍️</Text>
-              <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
-                Group Buying
-              </Text>
-              <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
-                Join others buying the same items to unlock bulk discounts
-              </Text>
-            </View>
-            
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>💰</Text>
-              <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
-                Better Prices
-              </Text>
-              <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
-                Access wholesale pricing through collective purchasing power
-              </Text>
-            </View>
-            
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>🤝</Text>
-              <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
-                B2B Solutions
-              </Text>
-              <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
-                Specialized tools for veterinary clinics and pharmacies
-              </Text>
-            </View>
-            
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>📱</Text>
-              <Text style={[styles.featureTitle, {color: isDarkMode ? '#fff' : '#000'}]}>
-                Mobile First
-              </Text>
-              <Text style={[styles.featureText, {color: isDarkMode ? '#ccc' : '#666'}]}>
-                Optimized for mobile commerce and quick purchasing decisions
-              </Text>
-            </View>
-          </View>
+          echo "Creating package.json..."
+          echo '{
+            "name": "OptiBuy",
+            "version": "1.2.0",
+            "private": true,
+            "scripts": {
+              "android": "react-native run-android",
+              "start": "react-native start"
+            },
+            "dependencies": {
+              "react": "18.2.0",
+              "react-native": "0.72.6"
+            }
+          }' > package.json
           
-          <Text style={[styles.readyText, {color: isDarkMode ? '#4CAF50' : '#2E7D32'}]}>
-            Ready for Google Play Store deployment
-          </Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    marginBottom: 40,
-    textAlign: 'center',
-  },
-  featuresContainer: {
-    width: '100%',
-    marginBottom: 40,
-  },
-  feature: {
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-    padding: 20,
-    marginBottom: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  featureIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  featureTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  featureText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  readyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-});
-
-export default App;
-EOF
+          echo "Creating app.json..."
+          echo '{
+            "name": "OptiBuy",
+            "displayName": "OptiBuy"
+          }' > app.json
+          
+          echo "Creating index.js..."
+          echo "import {AppRegistry} from 'react-native';
+          import App from './App';
+          import {name as appName} from './app.json';
+          
+          AppRegistry.registerComponent(appName, () => App);" > index.js
+          
+          echo "Creating App.tsx..."
+          echo "import React from 'react';
+          import {SafeAreaView, Text, StyleSheet, View} from 'react-native';
+          
+          function App() {
+            return (
+              <SafeAreaView style={styles.container}>
+                <View style={styles.content}>
+                  <Text style={styles.title}>OptiBuy</Text>
+                  <Text style={styles.subtitle}>Collective Purchasing Platform</Text>
+                  <Text style={styles.description}>Ready for Google Play Store deployment</Text>
+                </View>
+              </SafeAreaView>
+            );
+          }
+          
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              backgroundColor: '#f8f9fa',
+            },
+            content: {
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 20,
+            },
+            title: {
+              fontSize: 32,
+              fontWeight: 'bold',
+              marginBottom: 10,
+              color: '#000',
+            },
+            subtitle: {
+              fontSize: 18,
+              marginBottom: 20,
+              color: '#666',
+            },
+            description: {
+              fontSize: 16,
+              color: '#4CAF50',
+              fontWeight: '600',
+            },
+          });
+          
+          export default App;" > App.tsx
           
           npm install
           
-          echo "=== Directory Structure Verification ==="
-          pwd
+          echo "Directory structure created successfully"
           ls -la
-          echo "Android directory exists: $(test -d android && echo 'YES' || echo 'NO')"
           
-      - name: Setup Android Project Structure
+      - name: Setup Android Configuration
         script: |
-          echo "=== Setting up Android Project Structure ==="
+          echo "=== Setting up Android Configuration ==="
           cd OptiBuy
           
-          mkdir -p android/app/src/main/{java/com/optibuy/collective,res/values,res/mipmap-hdpi,res/mipmap-mdpi,res/mipmap-xhdpi,res/mipmap-xxhdpi,res/mipmap-xxxhdpi,assets}
-          mkdir -p android/gradle/wrapper
+          echo "Creating Android gradle files..."
           
-          cat > android/settings.gradle <<'EOF'
-rootProject.name = 'OptiBuy'
-include ':app'
-
-project(':app').projectDir = new File(rootProject.projectDir, 'app')
-EOF
+          echo 'rootProject.name = "OptiBuy"
+          include ":app"
           
-          cat > android/gradle/wrapper/gradle-wrapper.properties <<'EOF'
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-all.zip
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-EOF
+          project(":app").projectDir = new File(rootProject.projectDir, "app")' > android/settings.gradle
           
-          cat > android/gradle.properties <<'EOF'
-org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-android.useAndroidX=true
-android.enableJetifier=true
-
-android.bundle.enableUncompressedNativeLibs=false
-android.enableR8.fullMode=true
-
-org.gradle.parallel=true
-org.gradle.configureondemand=true
-org.gradle.daemon=true
-
-MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
-MYAPP_UPLOAD_KEY_ALIAS=upload
-MYAPP_UPLOAD_STORE_PASSWORD=optibuy_upload_2025
-MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025
-EOF
+          echo 'distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-all.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists' > android/gradle/wrapper/gradle-wrapper.properties
           
-          cat > android/build.gradle <<'EOF'
-buildscript {
-    ext {
-        buildToolsVersion = "34.0.0"
-        minSdkVersion = 21
-        compileSdkVersion = 35
-        targetSdkVersion = 35
-        ndkVersion = "21.4.7075529"
-    }
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.1.4")
-        classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        maven { url "https://www.jitpack.io" }
-    }
-}
-EOF
+          echo 'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.enableJetifier=true
+          android.bundle.enableUncompressedNativeLibs=false
+          android.enableR8.fullMode=true
+          org.gradle.parallel=true
+          org.gradle.configureondemand=true
+          org.gradle.daemon=true
+          MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
+          MYAPP_UPLOAD_KEY_ALIAS=upload
+          MYAPP_UPLOAD_STORE_PASSWORD=optibuy_upload_2025
+          MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025' > android/gradle.properties
           
-          cat > android/app/build.gradle <<'EOF'
-apply plugin: "com.android.application"
-apply plugin: "com.facebook.react"
-
-react {
-    entryFile = "index.js"
-    enableHermes = true
-    bundleInDebug = false
-    bundleInRelease = true
-}
-
-android {
-    ndkVersion rootProject.ext.ndkVersion
-    compileSdkVersion rootProject.ext.compileSdkVersion
-    
-    namespace "com.optibuy.collective"
-    defaultConfig {
-        applicationId "com.optibuy.collective"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.2.0"
-    }
-    
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
-        release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-            }
-        }
-    }
-    
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-        }
-    }
-    
-    bundle {
-        language {
-            enableSplit = false
-        }
-        density {
-            enableSplit = true
-        }
-        abi {
-            enableSplit = true
-        }
-    }
-}
-
-dependencies {
-    implementation "com.facebook.react:react-android"
-    implementation "com.facebook.react:hermes-android"
-}
-EOF
+          echo 'buildscript {
+              ext {
+                  buildToolsVersion = "34.0.0"
+                  minSdkVersion = 21
+                  compileSdkVersion = 35
+                  targetSdkVersion = 35
+                  ndkVersion = "21.4.7075529"
+              }
+              dependencies {
+                  classpath("com.android.tools.build:gradle:8.1.4")
+                  classpath("com.facebook.react:react-native-gradle-plugin")
+              }
+          }
           
-          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.optibuy.collective">
-
-    <uses-permission android:name="android.permission.INTERNET" />
-
-    <application
-      android:name=".MainApplication"
-      android:label="@string/app_name"
-      android:icon="@mipmap/ic_launcher"
-      android:allowBackup="false"
-      android:theme="@style/AppTheme">
-      <activity
-        android:name=".MainActivity"
-        android:label="@string/app_name"
-        android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
-        android:launchMode="singleTask"
-        android:windowSoftInputMode="adjustResize"
-        android:exported="true">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity>
-    </application>
-</manifest>
-EOF
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://www.jitpack.io" }
+              }
+          }' > android/build.gradle
           
-          cat > android/app/src/main/res/values/strings.xml <<'EOF'
-<resources>
-    <string name="app_name">OptiBuy</string>
-</resources>
-EOF
+          echo 'apply plugin: "com.android.application"
+          apply plugin: "com.facebook.react"
           
-          cat > android/gradlew <<'EOF'
-#!/usr/bin/env sh
-
-GRADLE_APP_NAME="Gradle"
-GRADLE_OPTS="-Dorg.gradle.appname=$GRADLE_APP_NAME"
-exec "/usr/bin/gradle" "$@"
-EOF
+          react {
+              entryFile = "index.js"
+              enableHermes = true
+              bundleInDebug = false
+              bundleInRelease = true
+          }
+          
+          android {
+              ndkVersion rootProject.ext.ndkVersion
+              compileSdkVersion rootProject.ext.compileSdkVersion
+              
+              namespace "com.optibuy.collective"
+              defaultConfig {
+                  applicationId "com.optibuy.collective"
+                  minSdkVersion rootProject.ext.minSdkVersion
+                  targetSdkVersion rootProject.ext.targetSdkVersion
+                  versionCode 2
+                  versionName "1.2.0"
+              }
+              
+              signingConfigs {
+                  debug {
+                      storeFile file("debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+                  release {
+                      if (project.hasProperty("MYAPP_UPLOAD_STORE_FILE")) {
+                          storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                          storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                          keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                          keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+                      }
+                  }
+              }
+              
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled true
+                      proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+                  }
+              }
+              
+              bundle {
+                  language {
+                      enableSplit = false
+                  }
+                  density {
+                      enableSplit = true
+                  }
+                  abi {
+                      enableSplit = true
+                  }
+              }
+          }
+          
+          dependencies {
+              implementation "com.facebook.react:react-android"
+              implementation "com.facebook.react:hermes-android"
+          }' > android/app/build.gradle
+          
+          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.optibuy.collective">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:allowBackup="false" android:theme="@style/AppTheme">
+                  <activity android:name=".MainActivity" android:label="@string/app_name" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>' > android/app/src/main/AndroidManifest.xml
+          
+          echo '<resources>
+              <string name="app_name">OptiBuy</string>
+          </resources>' > android/app/src/main/res/values/strings.xml
+          
+          echo '#!/usr/bin/env sh
+          GRADLE_APP_NAME="Gradle"
+          GRADLE_OPTS="-Dorg.gradle.appname=$GRADLE_APP_NAME"
+          exec "/usr/bin/gradle" "$@"' > android/gradlew
+          
           chmod +x android/gradlew
           
-          echo "=== Android Project Structure Created ==="
+          echo "Android configuration completed"
           ls -la android/
-          ls -la android/app/
           
       - name: Create Upload Keystore
         script: |
           echo "=== Creating Upload Keystore ==="
           cd OptiBuy
           
-          echo "Creating upload keystore matching Google Play Console..."
           keytool -genkeypair \
             -alias upload \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 9125 \
-            -keystore android/app/upload-keystore.jks \
-            -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
-            -storepass "optibuy_upload_2025" \
-            -keypass "optibuy_upload_2025"
-          
-          echo "=== Keystore Verification ==="
-          ls -la android/app/upload-keystore.jks
-          keytool -list -v -keystore android/app/upload-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1"
-          
-      - name: Build React Native Bundle
-        script: |
-          echo "=== Building React Native Bundle ==="
-          cd OptiBuy
-          
-          mkdir -p android/app/src/main/assets
-          
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res/
-          
-          echo "Bundle created successfully"
-          ls -la android/app/src/main/assets/
-          
-      - name: Build AAB for Google Play Console
-        script: |
-          echo "=== Building AAB for Google Play Console Upload ==="
-          cd OptiBuy/android
-          
-          chmod +x gradlew
-          
-          ./gradlew clean
-          
-          ./gradlew bundleRelease
-          
-          echo "=== AAB Build Verification ==="
-          ls -la app/build/outputs/bundle/release/
-          
-          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
-              echo "AAB file created successfully"
-              
-              file app/build/outputs/bundle/release/app-release.aab
-              unzip -l app/build/outputs/bundle/release/app-release.aab | head -20
-              
-              cd ../..
-              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-google-play-ready.aab
-              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
-              
-              cat > google_play_deployment.txt <<'EOF'
-=== GOOGLE PLAY CONSOLE UPLOAD READY ===
-Package: com.optibuy.collective
-Version Code: 2
-Version Name: 1.2.0
-Upload Key SHA-1: 80:71:B8:94:5A:40:B2:83:2C:99:3C:9E:E1:3D:E6:2A:D3:71:4E:50
-Target SDK: 35 (Android 15)
-Min SDK: 21
-Status: Ready for Google Play Console Upload
-EOF
-              
-              echo "=== Final AAB Files ==="
-              ls -la *.aab
-              file *.aab
-              
-              echo "AAB generation completed successfully for Google Play Console!"
-          else
-              echo "ERROR: AAB file not generated"
-              exit 1
-          fi
-          
-    artifacts:
-      - "*.aab"
-      - "OptiBuy/android/app/build/outputs/bundle/release/app-release.aab"
-      - "OptiBuy/android/app/build/outputs/mapping/release/mapping.txt"
-      - "OptiBuy/android/app/upload-keystore.jks"
-      - "google_play_deployment.txt"
-    publishing:
-      email:
-        recipients:
-          - build@optibuy.com
-        notify:
-          success: true
-          failure: true
+            -keyal
