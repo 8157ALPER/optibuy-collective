@@ -14,33 +14,26 @@ workflows:
           echo "Converting React web app to Android AAB"
           echo "Package: com.optibuy.collective"
           
-          # Check project structure
+          # Check project structure - this is a flattened repository
           echo "=== Project Structure Analysis ==="
-          ls -la
-          echo "=== Client Directory ==="
-          ls -la client/ || echo "No client directory"
+          echo "Root package.json build script:"
+          grep '"build"' package.json
           
-          # Install root dependencies (includes Vite and build tools)
-          echo "=== Installing Root Dependencies ==="
+          # Install all dependencies (Vite is in root package.json)
+          echo "=== Installing Dependencies ==="
           npm install
           
-          # Install client dependencies if client directory exists
-          if [ -d "client" ]; then
-              echo "=== Installing Client Dependencies ==="
-              cd client
-              npm install
-              cd ..
-          fi
-          
-          # Build the full-stack React app (frontend + backend)
+          # Run the build script from root (builds both frontend and backend)
           echo "=== Building React Application ==="
           npm run build
           
-          # Verify build output - check both dist/public (frontend) and dist/index.js (backend)
+          # Verify build output
           if [ -d "dist" ] && [ -d "dist/public" ]; then
               echo "✅ React build successful"
-              ls -la dist/
+              echo "Frontend build:"
               ls -la dist/public/
+              echo "Backend build:"
+              ls -la dist/index.js
           else
               echo "❌ React build failed - checking directories"
               ls -la
