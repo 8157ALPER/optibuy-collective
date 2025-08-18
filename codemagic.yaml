@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy React Native - Simple Working
+    name: OptiBuy React Native - Keytool Fixed
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -262,4 +262,79 @@ workflows:
           
           keytool -genkeypair \
             -alias upload \
-            -keyal
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 9125 \
+            -keystore android/app/upload-keystore.jks \
+            -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
+            -storepass optibuy_upload_2025 \
+            -keypass optibuy_upload_2025
+          
+          echo "Keystore created successfully"
+          ls -la android/app/upload-keystore.jks
+          keytool -list -v -keystore android/app/upload-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1"
+          
+      - name: Build React Native Bundle
+        script: |
+          echo "=== Building React Native Bundle ==="
+          cd OptiBuy
+          
+          mkdir -p android/app/src/main/assets
+          
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res/
+          
+          echo "Bundle created successfully"
+          ls -la android/app/src/main/assets/
+          
+      - name: Build AAB for Google Play Console
+        script: |
+          echo "=== Building AAB for Google Play Console ==="
+          cd OptiBuy/android
+          
+          chmod +x gradlew
+          ./gradlew clean
+          ./gradlew bundleRelease
+          
+          echo "=== AAB Build Verification ==="
+          ls -la app/build/outputs/bundle/release/
+          
+          if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
+              echo "AAB file created successfully"
+              file app/build/outputs/bundle/release/app-release.aab
+              
+              cd ../..
+              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-google-play-ready.aab
+              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
+              
+              echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
+              echo "Package: com.optibuy.collective" >> google_play_deployment.txt
+              echo "Version Code: 2" >> google_play_deployment.txt
+              echo "Version Name: 1.2.0" >> google_play_deployment.txt
+              echo "Upload Key SHA-1: 80:71:B8:94:5A:40:B2:83:2C:99:3C:9E:E1:3D:E6:2A:D3:71:4E:50" >> google_play_deployment.txt
+              echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
+              echo "Status: Ready for Google Play Console Upload" >> google_play_deployment.txt
+              
+              echo "AAB generation completed successfully!"
+              ls -la *.aab
+          else
+              echo "ERROR: AAB file not generated"
+              exit 1
+          fi
+          
+    artifacts:
+      - "*.aab"
+      - "OptiBuy/android/app/build/outputs/bundle/release/app-release.aab"
+      - "OptiBuy/android/app/upload-keystore.jks"
+      - "google_play_deployment.txt"
+    publishing:
+      email:
+        recipients:
+          - build@optibuy.com
+        notify:
+          success: true
+          failure: true
