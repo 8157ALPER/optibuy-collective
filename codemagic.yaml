@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy - Minimal Working Android AAB
+    name: OptiBuy - Keystore Detective & Upload Key Match
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -11,11 +11,133 @@ workflows:
         ANDROID_SDK_ROOT: /usr/local/share/android-sdk
         ANDROID_HOME: /usr/local/share/android-sdk
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+        EXPECTED_FINGERPRINT: "80:71:B8:94:5A:40:B2:83:2C:99:3C:9E:E1:3D:E6:2A:D3:71:4E:50"
     scripts:
-      - name: Create Minimal Android Project
+      - name: Keystore Detective - Find Matching Certificate
         script: |
-          echo "=== Creating Minimal Android Project ==="
+          echo "=== KEYSTORE DETECTIVE: Finding Upload Key Match ==="
+          echo "Target fingerprint: $EXPECTED_FINGERPRINT"
           
+          # Array of common passwords
+          PASSWORDS=("android" "optibuy" "optibuy123" "password" "123456" "optibuy_upload_2025" "release" "key" "debug" "test" "admin" "upload" "keystore" "store" "pass")
+          
+          # Array of common aliases
+          ALIASES=("upload" "release" "key" "key0" "androiddebugkey" "optibuy" "debug" "alias1" "mykey" "app" "android")
+          
+          KEYSTORE_FOUND=false
+          WORKING_PASSWORD=""
+          WORKING_ALIAS=""
+          
+          # Test repository keystore
+          if [ -f "attached_assets/release-key_1754548130465.keystore" ]; then
+              echo "Testing repository keystore: attached_assets/release-key_1754548130465.keystore"
+              
+              for password in "${PASSWORDS[@]}"; do
+                  for alias in "${ALIASES[@]}"; do
+                      echo -n "Testing password='$password', alias='$alias'... "
+                      
+                      FINGERPRINT=$(keytool -list -v -keystore attached_assets/release-key_1754548130465.keystore -storepass "$password" -alias "$alias" 2>/dev/null | grep "SHA1:" | head -1 | awk '{print $2}' || echo "")
+                      
+                      if [ ! -z "$FINGERPRINT" ]; then
+                          echo "SUCCESS! Found fingerprint: $FINGERPRINT"
+                          
+                          if [ "$FINGERPRINT" = "$EXPECTED_FINGERPRINT" ]; then
+                              echo "🎉 PERFECT MATCH! This is the correct keystore!"
+                              KEYSTORE_FOUND=true
+                              WORKING_PASSWORD="$password"
+                              WORKING_ALIAS="$alias"
+                              cp attached_assets/release-key_1754548130465.keystore ./working-keystore.jks
+                              break 2
+                          else
+                              echo "Different fingerprint, continuing search..."
+                          fi
+                      else
+                          echo "Failed"
+                      fi
+                  done
+              done
+          else
+              echo "Repository keystore not found"
+          fi
+          
+          # If perfect match not found, test other AAB files to extract certificates
+          if [ "$KEYSTORE_FOUND" = "false" ]; then
+              echo "=== Testing Existing AAB Files for Certificate Extraction ==="
+              
+              # Create a list of existing AAB files
+              AAB_FILES=("attached_assets/app-release*.aab" "attached_assets/optibuy-*.aab" "attached_assets/release*.aab")
+              
+              for aab_pattern in "${AAB_FILES[@]}"; do
+                  for aab_file in $aab_pattern; do
+                      if [ -f "$aab_file" ]; then
+                          echo "Analyzing AAB: $aab_file"
+                          
+                          # Extract and analyze certificates from AAB
+                          mkdir -p temp_aab_extract
+                          cd temp_aab_extract
+                          unzip -q "../$aab_file" 2>/dev/null || echo "Failed to extract $aab_file"
+                          
+                          # Look for certificate files
+                          if [ -f "META-INF/CERT.RSA" ]; then
+                              echo "Found certificate in $aab_file"
+                              keytool -printcert -file META-INF/CERT.RSA 2>/dev/null | grep "SHA1:" && echo "Certificate found in $aab_file"
+                          fi
+                          
+                          cd ..
+                          rm -rf temp_aab_extract
+                      fi
+                  done
+              done
+          fi
+          
+          # Generate final report
+          echo "=== KEYSTORE DETECTIVE REPORT ==="
+          if [ "$KEYSTORE_FOUND" = "true" ]; then
+              echo "✅ SUCCESS: Found matching keystore!"
+              echo "Password: $WORKING_PASSWORD"
+              echo "Alias: $WORKING_ALIAS"
+              echo "Fingerprint: $EXPECTED_FINGERPRINT"
+              echo "Keystore: working-keystore.jks"
+          else
+              echo "❌ FAILED: No matching keystore found"
+              echo "Recommendation: Request second upload key reset from Google Play Support"
+              
+              # Create new keystore as fallback
+              echo "Creating fallback keystore for second upload key reset request..."
+              keytool -genkeypair \
+                -alias upload \
+                -keyalg RSA \
+                -keysize 2048 \
+                -validity 9125 \
+                -keystore fallback-keystore.jks \
+                -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
+                -storepass optibuy_upload_2025 \
+                -keypass optibuy_upload_2025
+              
+              FALLBACK_FINGERPRINT=$(keytool -list -v -keystore fallback-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1:" | head -1 | awk '{print $2}')
+              echo "Fallback fingerprint for support request: $FALLBACK_FINGERPRINT"
+              
+              WORKING_PASSWORD="optibuy_upload_2025"
+              WORKING_ALIAS="upload"
+              cp fallback-keystore.jks working-keystore.jks
+          fi
+          
+          # Export environment variables for next step
+          echo "export KEYSTORE_PASSWORD='$WORKING_PASSWORD'" > keystore_config.sh
+          echo "export KEYSTORE_ALIAS='$WORKING_ALIAS'" >> keystore_config.sh
+          echo "export KEYSTORE_FOUND='$KEYSTORE_FOUND'" >> keystore_config.sh
+          
+      - name: Build AAB with Detected/Fallback Keystore
+        script: |
+          echo "=== Building AAB with Optimal Keystore ==="
+          source keystore_config.sh
+          
+          echo "Using keystore configuration:"
+          echo "Password: $KEYSTORE_PASSWORD"
+          echo "Alias: $KEYSTORE_ALIAS"
+          echo "Perfect match found: $KEYSTORE_FOUND"
+          
+          # Create Android project structure
           mkdir -p OptiBuy/android/app/src/main/java/com/optibuy/collective
           mkdir -p OptiBuy/android/app/src/main/res/values
           mkdir -p OptiBuy/android/app/src/main/res/layout
@@ -28,7 +150,23 @@ workflows:
           
           cd OptiBuy
           
-          echo "Creating gradle wrapper properties..."
+          # Copy the working keystore
+          cp ../working-keystore.jks android/app/upload-keystore.jks
+          
+          # Create gradle configuration with detected credentials
+          cat > android/gradle.properties << EOF
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          android.enableJetifier=true
+          android.bundle.enableUncompressedNativeLibs=false
+          android.enableR8.fullMode=true
+          MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
+          MYAPP_UPLOAD_KEY_ALIAS=$KEYSTORE_ALIAS
+          MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD
+          MYAPP_UPLOAD_KEY_PASSWORD=$KEYSTORE_PASSWORD
+          EOF
+          
+          # Create gradle wrapper
           cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
@@ -37,30 +175,13 @@ workflows:
           zipStorePath=wrapper/dists
           EOF
           
-          echo "Creating gradle.properties..."
-          cat > android/gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          android.enableJetifier=true
-          android.bundle.enableUncompressedNativeLibs=false
-          android.enableR8.fullMode=true
-          org.gradle.parallel=true
-          org.gradle.configureondemand=true
-          org.gradle.daemon=true
-          MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
-          MYAPP_UPLOAD_KEY_ALIAS=upload
-          MYAPP_UPLOAD_STORE_PASSWORD=optibuy_upload_2025
-          MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025
-          EOF
-          
-          echo "Creating settings.gradle..."
+          # Create build files
           cat > android/settings.gradle << 'EOF'
           rootProject.name = 'OptiBuy'
           include ':app'
           project(':app').projectDir = new File(rootProject.projectDir, 'app')
           EOF
           
-          echo "Creating root build.gradle..."
           cat > android/build.gradle << 'EOF'
           buildscript {
               ext {
@@ -86,7 +207,6 @@ workflows:
           }
           EOF
           
-          echo "Creating app build.gradle..."
           cat > android/app/build.gradle << 'EOF'
           apply plugin: 'com.android.application'
           
@@ -151,7 +271,7 @@ workflows:
           }
           EOF
           
-          echo "Creating AndroidManifest.xml..."
+          # Create Android resources
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -174,25 +294,16 @@ workflows:
           </manifest>
           EOF
           
-          echo "Project structure created successfully"
-          
-      - name: Create Android Resources and Code
-        script: |
-          echo "=== Creating Android Resources and Code ==="
-          cd OptiBuy
-          
-          echo "Creating strings.xml..."
           cat > android/app/src/main/res/values/strings.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
               <string name="app_name">OptiBuy</string>
               <string name="welcome_title">OptiBuy</string>
               <string name="welcome_subtitle">Collective Purchasing Platform</string>
-              <string name="welcome_description">Ready for Google Play Store deployment</string>
+              <string name="welcome_description">Upload Key Detective - Keystore Analysis</string>
           </resources>
           EOF
           
-          echo "Creating styles.xml..."
           cat > android/app/src/main/res/values/styles.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
@@ -204,7 +315,21 @@ workflows:
           </resources>
           EOF
           
-          echo "Creating activity_main.xml layout..."
+          cat > android/app/src/main/java/com/optibuy/collective/MainActivity.java << 'EOF'
+          package com.optibuy.collective;
+          
+          import androidx.appcompat.app.AppCompatActivity;
+          import android.os.Bundle;
+          
+          public class MainActivity extends AppCompatActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+              }
+          }
+          EOF
+          
           cat > android/app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -221,142 +346,68 @@ workflows:
                   android:textSize="32sp"
                   android:textStyle="bold"
                   android:textColor="#000000"
-                  android:layout_marginBottom="10dp"
                   app:layout_constraintTop_toTopOf="parent"
                   app:layout_constraintBottom_toBottomOf="parent"
-                  app:layout_constraintLeft_toLeftOf="parent"
-                  app:layout_constraintRight_toRightOf="parent"
-                  app:layout_constraintVertical_chainStyle="packed" />
-          
-              <TextView
-                  android:id="@+id/subtitle"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="@string/welcome_subtitle"
-                  android:textSize="18sp"
-                  android:textColor="#666666"
-                  android:layout_marginBottom="20dp"
-                  app:layout_constraintTop_toBottomOf="@id/title"
-                  app:layout_constraintLeft_toLeftOf="parent"
-                  app:layout_constraintRight_toRightOf="parent" />
-          
-              <TextView
-                  android:id="@+id/description"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="@string/welcome_description"
-                  android:textSize="16sp"
-                  android:textColor="#4CAF50"
-                  android:textStyle="bold"
-                  app:layout_constraintTop_toBottomOf="@id/subtitle"
                   app:layout_constraintLeft_toLeftOf="parent"
                   app:layout_constraintRight_toRightOf="parent" />
           
           </androidx.constraintlayout.widget.ConstraintLayout>
           EOF
           
-          echo "Creating MainActivity.java..."
-          cat > android/app/src/main/java/com/optibuy/collective/MainActivity.java << 'EOF'
-          package com.optibuy.collective;
-          
-          import androidx.appcompat.app.AppCompatActivity;
-          import android.os.Bundle;
-          
-          public class MainActivity extends AppCompatActivity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
-              }
-          }
-          EOF
-          
-          echo "Creating proguard-rules.pro..."
-          cat > android/app/proguard-rules.pro << 'EOF'
-          # Add project specific ProGuard rules here.
-          -keep class com.optibuy.collective.** { *; }
-          -dontwarn okio.**
-          -dontwarn retrofit2.**
-          EOF
-          
-          echo "Creating placeholder app icons..."
-          # Simple 1x1 transparent PNG for all icon sizes
+          # Create simple app icons
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           
-          echo "Android resources and code created successfully"
-          
-      - name: Create Upload Keystore
-        script: |
-          echo "=== Creating Upload Keystore ==="
-          cd OptiBuy
-          
-          keytool -genkeypair \
-            -alias upload \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 9125 \
-            -keystore android/app/upload-keystore.jks \
-            -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
-            -storepass optibuy_upload_2025 \
-            -keypass optibuy_upload_2025
-          
-          echo "Keystore created successfully"
-          ls -la android/app/upload-keystore.jks
-          keytool -list -v -keystore android/app/upload-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1"
-          
-      - name: Build AAB with System Gradle
-        script: |
-          echo "=== Building AAB for Google Play Console ==="
-          cd OptiBuy/android
-          
-          echo "Using system gradle directly..."
-          which gradle
-          gradle --version
-          
-          echo "Running gradle clean..."
+          # Build AAB
+          cd android
+          echo "Building AAB with keystore analysis results..."
           gradle clean
-          
-          echo "Building AAB bundle..."
           gradle bundleRelease
           
-          echo "=== AAB Build Verification ==="
-          find . -name "*.aab" -type f
-          ls -la app/build/outputs/bundle/release/ || echo "Release directory not found"
-          
+          # Verify and copy results
           if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
-              echo "AAB file created successfully"
-              file app/build/outputs/bundle/release/app-release.aab
-              
               cd ../..
-              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-google-play-ready.aab
-              cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-$(date +%Y%m%d-%H%M).aab
               
-              echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
-              echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 2" >> google_play_deployment.txt
-              echo "Version Name: 1.2.0" >> google_play_deployment.txt
-              echo "Upload Key SHA-1: 80:71:B8:94:5A:40:B2:83:2C:99:3C:9E:E1:3D:E6:2A:D3:71:4E:50" >> google_play_deployment.txt
-              echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
-              echo "Status: Ready for Google Play Console Upload" >> google_play_deployment.txt
+              if [ "$KEYSTORE_FOUND" = "true" ]; then
+                  cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-perfect-match.aab
+                  echo "=== PERFECT KEYSTORE MATCH AAB READY ===" > deployment_report.txt
+                  echo "Status: Perfect keystore match found and used" >> deployment_report.txt
+                  echo "Expected fingerprint: $EXPECTED_FINGERPRINT" >> deployment_report.txt
+                  echo "READY FOR GOOGLE PLAY CONSOLE UPLOAD" >> deployment_report.txt
+              else
+                  cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-support-request.aab
+                  ACTUAL_FINGERPRINT=$(keytool -list -v -keystore working-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1:" | head -1 | awk '{print $2}')
+                  echo "=== GOOGLE PLAY SUPPORT REQUEST NEEDED ===" > deployment_report.txt
+                  echo "Status: No matching keystore found" >> deployment_report.txt
+                  echo "Expected fingerprint: $EXPECTED_FINGERPRINT" >> deployment_report.txt
+                  echo "New AAB fingerprint: $ACTUAL_FINGERPRINT" >> deployment_report.txt
+                  echo "ACTION REQUIRED: Request second upload key reset" >> deployment_report.txt
+                  echo "" >> deployment_report.txt
+                  echo "Support message template:" >> deployment_report.txt
+                  echo "Subject: Upload Key Reset Request - Second Reset Needed" >> deployment_report.txt
+                  echo "App: OptiBuy (com.optibuy.collective)" >> deployment_report.txt
+                  echo "I need a second upload key reset." >> deployment_report.txt
+                  echo "Current Expected: $EXPECTED_FINGERPRINT" >> deployment_report.txt
+                  echo "New Certificate: $ACTUAL_FINGERPRINT" >> deployment_report.txt
+                  echo "Please update the upload key to match the new certificate." >> deployment_report.txt
+              fi
               
-              echo "AAB generation completed successfully!"
+              echo "AAB generation completed!"
               ls -la *.aab
+              cat deployment_report.txt
           else
-              echo "ERROR: AAB file not generated"
-              echo "Checking all build outputs:"
-              find OptiBuy/android -name "*.aab" -type f
+              echo "ERROR: AAB build failed"
               exit 1
           fi
           
     artifacts:
       - "*.aab"
-      - "OptiBuy/android/app/build/outputs/bundle/release/app-release.aab"
-      - "OptiBuy/android/app/upload-keystore.jks"
-      - "google_play_deployment.txt"
+      - "*.jks"
+      - "deployment_report.txt"
+      - "keystore_config.sh"
     publishing:
       email:
         recipients:
