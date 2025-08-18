@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy React Native - Gradle Wrapper Fixed
+    name: OptiBuy React Native - Minimal Working
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -30,7 +30,8 @@ workflows:
           mkdir -p android/gradle/wrapper
           
           echo "Creating package.json..."
-          echo '{
+          cat > package.json << 'EOF'
+          {
             "name": "OptiBuy",
             "version": "1.2.0",
             "private": true,
@@ -42,23 +43,29 @@ workflows:
               "react": "18.2.0",
               "react-native": "0.72.6"
             }
-          }' > package.json
+          }
+          EOF
           
           echo "Creating app.json..."
-          echo '{
+          cat > app.json << 'EOF'
+          {
             "name": "OptiBuy",
             "displayName": "OptiBuy"
-          }' > app.json
+          }
+          EOF
           
           echo "Creating index.js..."
-          echo "import {AppRegistry} from 'react-native';
+          cat > index.js << 'EOF'
+          import {AppRegistry} from 'react-native';
           import App from './App';
           import {name as appName} from './app.json';
           
-          AppRegistry.registerComponent(appName, () => App);" > index.js
+          AppRegistry.registerComponent(appName, () => App);
+          EOF
           
           echo "Creating App.tsx..."
-          echo "import React from 'react';
+          cat > App.tsx << 'EOF'
+          import React from 'react';
           import {SafeAreaView, Text, StyleSheet, View} from 'react-native';
           
           function App() {
@@ -102,7 +109,8 @@ workflows:
             },
           });
           
-          export default App;" > App.tsx
+          export default App;
+          EOF
           
           npm install
           
@@ -116,18 +124,23 @@ workflows:
           
           echo "Creating Android gradle files..."
           
-          echo 'rootProject.name = "OptiBuy"
-          include ":app"
+          cat > android/settings.gradle << 'EOF'
+          rootProject.name = 'OptiBuy'
+          include ':app'
           
-          project(":app").projectDir = new File(rootProject.projectDir, "app")' > android/settings.gradle
+          project(':app').projectDir = new File(rootProject.projectDir, 'app')
+          EOF
           
-          echo 'distributionBase=GRADLE_USER_HOME
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
           distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-all.zip
           zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists' > android/gradle/wrapper/gradle-wrapper.properties
+          zipStorePath=wrapper/dists
+          EOF
           
-          echo 'org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          cat > android/gradle.properties << 'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           android.useAndroidX=true
           android.enableJetifier=true
           android.bundle.enableUncompressedNativeLibs=false
@@ -138,9 +151,11 @@ workflows:
           MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
           MYAPP_UPLOAD_KEY_ALIAS=upload
           MYAPP_UPLOAD_STORE_PASSWORD=optibuy_upload_2025
-          MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025' > android/gradle.properties
+          MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025
+          EOF
           
-          echo 'buildscript {
+          cat > android/build.gradle << 'EOF'
+          buildscript {
               ext {
                   buildToolsVersion = "34.0.0"
                   minSdkVersion = 21
@@ -160,9 +175,11 @@ workflows:
                   mavenCentral()
                   maven { url "https://www.jitpack.io" }
               }
-          }' > android/build.gradle
+          }
+          EOF
           
-          echo 'apply plugin: "com.android.application"
+          cat > android/app/build.gradle << 'EOF'
+          apply plugin: "com.android.application"
           apply plugin: "com.facebook.react"
           
           react {
@@ -187,13 +204,13 @@ workflows:
               
               signingConfigs {
                   debug {
-                      storeFile file("debug.keystore")
-                      storePassword "android"
-                      keyAlias "androiddebugkey"
-                      keyPassword "android"
+                      storeFile file('debug.keystore')
+                      storePassword 'android'
+                      keyAlias 'androiddebugkey'
+                      keyPassword 'android'
                   }
                   release {
-                      if (project.hasProperty("MYAPP_UPLOAD_STORE_FILE")) {
+                      if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
                           storeFile file(MYAPP_UPLOAD_STORE_FILE)
                           storePassword MYAPP_UPLOAD_STORE_PASSWORD
                           keyAlias MYAPP_UPLOAD_KEY_ALIAS
@@ -229,9 +246,11 @@ workflows:
           dependencies {
               implementation "com.facebook.react:react-android"
               implementation "com.facebook.react:hermes-android"
-          }' > android/app/build.gradle
+          }
+          EOF
           
-          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.optibuy.collective">
+          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.optibuy.collective">
               <uses-permission android:name="android.permission.INTERNET" />
               <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:allowBackup="false" android:theme="@style/AppTheme">
                   <activity android:name=".MainActivity" android:label="@string/app_name" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:exported="true">
@@ -241,92 +260,17 @@ workflows:
                       </intent-filter>
                   </activity>
               </application>
-          </manifest>' > android/app/src/main/AndroidManifest.xml
+          </manifest>
+          EOF
           
-          echo '<resources>
+          cat > android/app/src/main/res/values/strings.xml << 'EOF'
+          <resources>
               <string name="app_name">OptiBuy</string>
-          </resources>' > android/app/src/main/res/values/strings.xml
+          </resources>
+          EOF
           
           echo "Android configuration completed"
           ls -la android/
-          
-      - name: Create Gradle Wrapper
-        script: |
-          echo "=== Creating Proper Gradle Wrapper ==="
-          cd OptiBuy/android
-          
-          curl -o gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.1.1/gradle/wrapper/gradle-wrapper.jar
-          mv gradle-wrapper.jar gradle/wrapper/
-          
-          echo '#!/bin/bash
-          
-          APP_NAME="Gradle"
-          APP_BASE_NAME="${0##*/}"
-          
-          # Use the maximum available, or set MAX_FD != -1 to use that value.
-          MAX_FD="maximum"
-          
-          warn () {
-              echo "$*"
-          } >&2
-          
-          die () {
-              echo
-              echo "$*"
-              echo
-              exit 1
-          } >&2
-          
-          # OS specific support (must be "true" or "false").
-          cygwin=false
-          msys=false
-          darwin=false
-          nonstop=false
-          case "$( uname )" in                #(
-            CYGWIN* )         cygwin=true  ;; #(
-            Darwin* )         darwin=true  ;; #(
-            MSYS* | MINGW* )  msys=true    ;; #(
-            NONSTOP* )        nonstop=true ;;
-          esac
-          
-          CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-          
-          APP_HOME=$( cd "${APP_HOME:-./}" && pwd -P ) || die "Unable to determine application directory"
-          
-          # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-          DEFAULT_JVM_OPTS="\"-Xmx64m\" \"-Xms64m\""
-          
-          # Find java executable
-          if [ -n "$JAVA_HOME" ] ; then
-              if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
-                  # IBM AIX location
-                  JAVACMD="$JAVA_HOME/jre/sh/java"
-              elif [ -x "$JAVA_HOME/bin/java" ] ; then
-                  JAVACMD="$JAVA_HOME/bin/java"
-              else
-                  die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME"
-              fi
-          else
-              JAVACMD="java"
-              which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no java command could be found in your PATH."
-          fi
-          
-          # Escape application args
-          save () {
-              for i do printf %s\\n "$i" | sed "s/'"'"'/'"'"'\"'"'"'\"'"'"'/g;1s/^/'"'"'/;\$s/\$/ '"'"'/" ; done
-              echo " "
-          }
-          APP_ARGS=$(save "$@")
-          
-          # Collect all arguments for the java command
-          set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "-Dorg.gradle.appname=$APP_BASE_NAME" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
-          
-          exec "$JAVACMD" "$@"' > gradlew
-          
-          chmod +x gradlew
-          
-          echo "Gradle wrapper created successfully"
-          ls -la gradlew
           
       - name: Create Upload Keystore
         script: |
@@ -364,23 +308,20 @@ workflows:
           echo "Bundle created successfully"
           ls -la android/app/src/main/assets/
           
-      - name: Build AAB for Google Play Console
+      - name: Build AAB with System Gradle
         script: |
           echo "=== Building AAB for Google Play Console ==="
           cd OptiBuy/android
           
-          echo "Gradle wrapper verification:"
-          ls -la gradlew
-          which java
-          echo "JAVA_HOME: $JAVA_HOME"
-          
-          chmod +x gradlew
+          echo "Using system gradle directly..."
+          which gradle
+          gradle --version
           
           echo "Running gradle clean..."
-          ./gradlew clean --stacktrace
+          gradle clean
           
           echo "Building AAB bundle..."
-          ./gradlew bundleRelease --stacktrace
+          gradle bundleRelease
           
           echo "=== AAB Build Verification ==="
           find . -name "*.aab" -type f
