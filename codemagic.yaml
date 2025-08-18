@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy React Native - Complete Setup
+    name: OptiBuy - Minimal Working Android AAB
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -12,130 +12,23 @@ workflows:
         ANDROID_HOME: /usr/local/share/android-sdk
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
     scripts:
-      - name: Create React Native Project Structure
+      - name: Create Minimal Android Project
         script: |
-          echo "=== Creating React Native Project Structure ==="
+          echo "=== Creating Minimal Android Project ==="
           
-          npm install -g @react-native-community/cli
+          mkdir -p OptiBuy/android/app/src/main/java/com/optibuy/collective
+          mkdir -p OptiBuy/android/app/src/main/res/values
+          mkdir -p OptiBuy/android/app/src/main/res/layout
+          mkdir -p OptiBuy/android/app/src/main/res/mipmap-hdpi
+          mkdir -p OptiBuy/android/app/src/main/res/mipmap-mdpi
+          mkdir -p OptiBuy/android/app/src/main/res/mipmap-xhdpi
+          mkdir -p OptiBuy/android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p OptiBuy/android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p OptiBuy/android/gradle/wrapper
           
-          echo "Creating OptiBuy directory..."
-          mkdir -p OptiBuy
           cd OptiBuy
           
-          npm init -y
-          
-          mkdir -p android/app/src/main/java/com/optibuy/collective
-          mkdir -p android/app/src/main/res/values
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-          mkdir -p android/app/src/main/assets
-          mkdir -p android/gradle/wrapper
-          
-          echo "Creating package.json..."
-          cat > package.json << 'EOF'
-          {
-            "name": "OptiBuy",
-            "version": "1.2.0",
-            "private": true,
-            "scripts": {
-              "android": "react-native run-android",
-              "start": "react-native start"
-            },
-            "dependencies": {
-              "react": "18.2.0",
-              "react-native": "0.72.6"
-            }
-          }
-          EOF
-          
-          echo "Creating app.json..."
-          cat > app.json << 'EOF'
-          {
-            "name": "OptiBuy",
-            "displayName": "OptiBuy"
-          }
-          EOF
-          
-          echo "Creating index.js..."
-          cat > index.js << 'EOF'
-          import {AppRegistry} from 'react-native';
-          import App from './App';
-          import {name as appName} from './app.json';
-          
-          AppRegistry.registerComponent(appName, () => App);
-          EOF
-          
-          echo "Creating App.tsx..."
-          cat > App.tsx << 'EOF'
-          import React from 'react';
-          import {SafeAreaView, Text, StyleSheet, View} from 'react-native';
-          
-          function App() {
-            return (
-              <SafeAreaView style={styles.container}>
-                <View style={styles.content}>
-                  <Text style={styles.title}>OptiBuy</Text>
-                  <Text style={styles.subtitle}>Collective Purchasing Platform</Text>
-                  <Text style={styles.description}>Ready for Google Play Store deployment</Text>
-                </View>
-              </SafeAreaView>
-            );
-          }
-          
-          const styles = StyleSheet.create({
-            container: {
-              flex: 1,
-              backgroundColor: '#f8f9fa',
-            },
-            content: {
-              flex: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: 20,
-            },
-            title: {
-              fontSize: 32,
-              fontWeight: 'bold',
-              marginBottom: 10,
-              color: '#000',
-            },
-            subtitle: {
-              fontSize: 18,
-              marginBottom: 20,
-              color: '#666',
-            },
-            description: {
-              fontSize: 16,
-              color: '#4CAF50',
-              fontWeight: '600',
-            },
-          });
-          
-          export default App;
-          EOF
-          
-          npm install
-          
-          echo "Directory structure created successfully"
-          ls -la
-          
-      - name: Setup Android Configuration
-        script: |
-          echo "=== Setting up Android Configuration ==="
-          cd OptiBuy
-          
-          echo "Creating Android gradle files..."
-          
-          cat > android/settings.gradle << 'EOF'
-          rootProject.name = 'OptiBuy'
-          include ':app'
-          
-          project(':app').projectDir = new File(rootProject.projectDir, 'app')
-          EOF
-          
+          echo "Creating gradle wrapper properties..."
           cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
@@ -144,6 +37,7 @@ workflows:
           zipStorePath=wrapper/dists
           EOF
           
+          echo "Creating gradle.properties..."
           cat > android/gradle.properties << 'EOF'
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           android.useAndroidX=true
@@ -159,6 +53,14 @@ workflows:
           MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025
           EOF
           
+          echo "Creating settings.gradle..."
+          cat > android/settings.gradle << 'EOF'
+          rootProject.name = 'OptiBuy'
+          include ':app'
+          project(':app').projectDir = new File(rootProject.projectDir, 'app')
+          EOF
+          
+          echo "Creating root build.gradle..."
           cat > android/build.gradle << 'EOF'
           buildscript {
               ext {
@@ -166,15 +68,13 @@ workflows:
                   minSdkVersion = 21
                   compileSdkVersion = 35
                   targetSdkVersion = 35
-                  ndkVersion = "21.4.7075529"
               }
               repositories {
                   google()
                   mavenCentral()
               }
               dependencies {
-                  classpath("com.android.tools.build:gradle:8.1.4")
-                  classpath("com.facebook.react:react-native-gradle-plugin:0.72.11")
+                  classpath 'com.android.tools.build:gradle:8.1.4'
               }
           }
           
@@ -182,27 +82,19 @@ workflows:
               repositories {
                   google()
                   mavenCentral()
-                  maven { url "https://www.jitpack.io" }
               }
           }
           EOF
           
+          echo "Creating app build.gradle..."
           cat > android/app/build.gradle << 'EOF'
-          apply plugin: "com.android.application"
-          apply plugin: "com.facebook.react"
-          
-          react {
-              entryFile = "index.js"
-              enableHermes = true
-              bundleInDebug = false
-              bundleInRelease = true
-          }
+          apply plugin: 'com.android.application'
           
           android {
-              ndkVersion rootProject.ext.ndkVersion
+              namespace 'com.optibuy.collective'
               compileSdkVersion rootProject.ext.compileSdkVersion
+              buildToolsVersion rootProject.ext.buildToolsVersion
               
-              namespace "com.optibuy.collective"
               defaultConfig {
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
@@ -233,9 +125,9 @@ workflows:
                       signingConfig signingConfigs.debug
                   }
                   release {
-                      signingConfig signingConfigs.release
                       minifyEnabled true
-                      proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                      signingConfig signingConfigs.release
                   }
               }
               
@@ -253,26 +145,25 @@ workflows:
           }
           
           dependencies {
-              implementation "com.facebook.react:react-android"
-              implementation "com.facebook.react:hermes-android"
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+              implementation 'com.google.android.material:material:1.9.0'
           }
           EOF
           
+          echo "Creating AndroidManifest.xml..."
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
-              <application 
-                  android:name=".MainApplication" 
-                  android:label="@string/app_name" 
-                  android:icon="@mipmap/ic_launcher" 
-                  android:allowBackup="false" 
+              
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="@string/app_name"
                   android:theme="@style/AppTheme">
-                  <activity 
-                      android:name=".MainActivity" 
-                      android:label="@string/app_name" 
-                      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode" 
-                      android:launchMode="singleTask" 
-                      android:windowSoftInputMode="adjustResize" 
+                  <activity
+                      android:name=".MainActivity"
                       android:exported="true">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
@@ -283,119 +174,120 @@ workflows:
           </manifest>
           EOF
           
+          echo "Project structure created successfully"
+          
+      - name: Create Android Resources and Code
+        script: |
+          echo "=== Creating Android Resources and Code ==="
+          cd OptiBuy
+          
+          echo "Creating strings.xml..."
           cat > android/app/src/main/res/values/strings.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <resources>
               <string name="app_name">OptiBuy</string>
+              <string name="welcome_title">OptiBuy</string>
+              <string name="welcome_subtitle">Collective Purchasing Platform</string>
+              <string name="welcome_description">Ready for Google Play Store deployment</string>
           </resources>
           EOF
           
+          echo "Creating styles.xml..."
           cat > android/app/src/main/res/values/styles.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-                  <item name="android:textColor">#000000</item>
+              <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+                  <item name="colorPrimary">#4CAF50</item>
+                  <item name="colorPrimaryDark">#388E3C</item>
+                  <item name="colorAccent">#FF5722</item>
               </style>
           </resources>
           EOF
           
-          echo "Creating default app icons..."
+          echo "Creating activity_main.xml layout..."
+          cat > android/app/src/main/res/layout/activity_main.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:background="#f8f9fa">
+          
+              <TextView
+                  android:id="@+id/title"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="@string/welcome_title"
+                  android:textSize="32sp"
+                  android:textStyle="bold"
+                  android:textColor="#000000"
+                  android:layout_marginBottom="10dp"
+                  app:layout_constraintTop_toTopOf="parent"
+                  app:layout_constraintBottom_toBottomOf="parent"
+                  app:layout_constraintLeft_toLeftOf="parent"
+                  app:layout_constraintRight_toRightOf="parent"
+                  app:layout_constraintVertical_chainStyle="packed" />
+          
+              <TextView
+                  android:id="@+id/subtitle"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="@string/welcome_subtitle"
+                  android:textSize="18sp"
+                  android:textColor="#666666"
+                  android:layout_marginBottom="20dp"
+                  app:layout_constraintTop_toBottomOf="@id/title"
+                  app:layout_constraintLeft_toLeftOf="parent"
+                  app:layout_constraintRight_toRightOf="parent" />
+          
+              <TextView
+                  android:id="@+id/description"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:text="@string/welcome_description"
+                  android:textSize="16sp"
+                  android:textColor="#4CAF50"
+                  android:textStyle="bold"
+                  app:layout_constraintTop_toBottomOf="@id/subtitle"
+                  app:layout_constraintLeft_toLeftOf="parent"
+                  app:layout_constraintRight_toRightOf="parent" />
+          
+          </androidx.constraintlayout.widget.ConstraintLayout>
+          EOF
+          
+          echo "Creating MainActivity.java..."
+          cat > android/app/src/main/java/com/optibuy/collective/MainActivity.java << 'EOF'
+          package com.optibuy.collective;
+          
+          import androidx.appcompat.app.AppCompatActivity;
+          import android.os.Bundle;
+          
+          public class MainActivity extends AppCompatActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  setContentView(R.layout.activity_main);
+              }
+          }
+          EOF
+          
+          echo "Creating proguard-rules.pro..."
+          cat > android/app/proguard-rules.pro << 'EOF'
+          # Add project specific ProGuard rules here.
+          -keep class com.optibuy.collective.** { *; }
+          -dontwarn okio.**
+          -dontwarn retrofit2.**
+          EOF
+          
+          echo "Creating placeholder app icons..."
+          # Simple 1x1 transparent PNG for all icon sizes
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           
-          echo "Android configuration completed"
-          ls -la android/
-          
-      - name: Create Java Files
-        script: |
-          echo "=== Creating Required Java Files ==="
-          cd OptiBuy
-          
-          cat > android/app/src/main/java/com/optibuy/collective/MainActivity.java << 'EOF'
-          package com.optibuy.collective;
-          
-          import com.facebook.react.ReactActivity;
-          import com.facebook.react.ReactActivityDelegate;
-          import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
-          import com.facebook.react.defaults.DefaultReactActivityDelegate;
-          
-          public class MainActivity extends ReactActivity {
-              @Override
-              protected String getMainComponentName() {
-                  return "OptiBuy";
-              }
-              
-              @Override
-              protected ReactActivityDelegate createReactActivityDelegate() {
-                  return new DefaultReactActivityDelegate(
-                      this,
-                      getMainComponentName(),
-                      DefaultNewArchitectureEntryPoint.getFabricEnabled()
-                  );
-              }
-          }
-          EOF
-          
-          cat > android/app/src/main/java/com/optibuy/collective/MainApplication.java << 'EOF'
-          package com.optibuy.collective;
-          
-          import android.app.Application;
-          import com.facebook.react.PackageList;
-          import com.facebook.react.ReactApplication;
-          import com.facebook.react.ReactNativeHost;
-          import com.facebook.react.ReactPackage;
-          import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
-          import com.facebook.react.defaults.DefaultReactNativeHost;
-          import com.facebook.soloader.SoLoader;
-          import java.util.List;
-          
-          public class MainApplication extends Application implements ReactApplication {
-              private final ReactNativeHost mReactNativeHost =
-                  new DefaultReactNativeHost(this) {
-                      @Override
-                      public boolean getUseDeveloperSupport() {
-                          return BuildConfig.DEBUG;
-                      }
-                      
-                      @Override
-                      protected List<ReactPackage> getPackages() {
-                          return new PackageList(this).getPackages();
-                      }
-                      
-                      @Override
-                      protected String getJSMainModuleName() {
-                          return "index";
-                      }
-                      
-                      @Override
-                      protected boolean isNewArchEnabled() {
-                          return BuildConfig.IS_NEW_ARCHITECTURE_ENABLED;
-                      }
-                      
-                      @Override
-                      protected Boolean isHermesEnabled() {
-                          return BuildConfig.IS_HERMES_ENABLED;
-                      }
-                  };
-              
-              @Override
-              public ReactNativeHost getReactNativeHost() {
-                  return mReactNativeHost;
-              }
-              
-              @Override
-              public void onCreate() {
-                  super.onCreate();
-                  SoLoader.init(this, false);
-                  if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-                      DefaultNewArchitectureEntryPoint.load();
-                  }
-              }
-          }
-          EOF
-          
-          echo "Java files created successfully"
+          echo "Android resources and code created successfully"
           
       - name: Create Upload Keystore
         script: |
@@ -416,23 +308,6 @@ workflows:
           ls -la android/app/upload-keystore.jks
           keytool -list -v -keystore android/app/upload-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1"
           
-      - name: Build React Native Bundle
-        script: |
-          echo "=== Building React Native Bundle ==="
-          cd OptiBuy
-          
-          mkdir -p android/app/src/main/assets
-          
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res/
-          
-          echo "Bundle created successfully"
-          ls -la android/app/src/main/assets/
-          
       - name: Build AAB with System Gradle
         script: |
           echo "=== Building AAB for Google Play Console ==="
@@ -443,10 +318,10 @@ workflows:
           gradle --version
           
           echo "Running gradle clean..."
-          gradle clean --stacktrace
+          gradle clean
           
           echo "Building AAB bundle..."
-          gradle bundleRelease --stacktrace
+          gradle bundleRelease
           
           echo "=== AAB Build Verification ==="
           find . -name "*.aab" -type f
