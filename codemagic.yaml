@@ -14,18 +14,20 @@ workflows:
           echo "Converting React web app to Android AAB"
           echo "Package: com.optibuy.collective"
           
-          # Install dependencies
+          # Install root dependencies (includes Vite)
           npm install
           
-          # Build the React app
+          # Build the full-stack React app (frontend + backend)
           npm run build
           
-          # Verify build output
-          if [ -d "dist" ]; then
+          # Verify build output - check both dist/public (frontend) and dist/index.js (backend)
+          if [ -d "dist" ] && [ -d "dist/public" ]; then
               echo "✅ React build successful"
               ls -la dist/
+              ls -la dist/public/
           else
               echo "❌ React build failed"
+              ls -la
               exit 1
           fi
 
@@ -36,7 +38,7 @@ workflows:
           
           # Initialize Capacitor (if not already done)
           if [ ! -f "capacitor.config.ts" ]; then
-              npx cap init optibuy com.optibuy.collective --web-dir=dist
+              npx cap init optibuy com.optibuy.collective --web-dir=dist/public
           fi
           
           # Update capacitor config for production
@@ -46,7 +48,7 @@ workflows:
           const config: CapacitorConfig = {
             appId: 'com.optibuy.collective',
             appName: 'OptiBuy',
-            webDir: 'dist',
+            webDir: 'dist/public',
             server: {
               androidScheme: 'https'
             },
