@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy React Native - Minimal Working
+    name: OptiBuy React Native - Repositories Fixed
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -163,6 +163,11 @@ workflows:
                   targetSdkVersion = 35
                   ndkVersion = "21.4.7075529"
               }
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url "https://www.jitpack.io" }
+              }
               dependencies {
                   classpath("com.android.tools.build:gradle:8.1.4")
                   classpath("com.facebook.react:react-native-gradle-plugin")
@@ -318,10 +323,10 @@ workflows:
           gradle --version
           
           echo "Running gradle clean..."
-          gradle clean
+          gradle clean --stacktrace
           
           echo "Building AAB bundle..."
-          gradle bundleRelease
+          gradle bundleRelease --stacktrace
           
           echo "=== AAB Build Verification ==="
           find . -name "*.aab" -type f
