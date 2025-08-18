@@ -86,6 +86,13 @@ workflows:
 
       - name: Configure Production Android Build  
         script: |
+          # Verify Flutter project was created
+          if [ ! -d "optibuy_production" ]; then
+              echo "ERROR: Flutter project directory not found"
+              ls -la
+              exit 1
+          fi
+          
           cd optibuy_production
           
           # Create assets
@@ -93,6 +100,11 @@ workflows:
           echo '{"app_name": "OptiBuy", "version": "1.2.0", "market": "Turkish B2B"}' > assets/config/app_config.json
           
           # Copy upload keystore to project directory
+          if [ ! -f "../optibuy-upload-key-production.jks" ]; then
+              echo "ERROR: Upload keystore not found in parent directory"
+              ls -la ../
+              exit 1
+          fi
           cp ../optibuy-upload-key-production.jks ./
           
           # Update Android app/build.gradle for original package
@@ -176,11 +188,18 @@ workflows:
 
       - name: Build Production AAB with New Upload Key
         script: |
+          # Verify Flutter project exists
+          if [ ! -d "optibuy_production" ]; then
+              echo "ERROR: Flutter project directory not found"
+              exit 1
+          fi
+          
           cd optibuy_production
           
           # Verify keystore exists
           if [ ! -f "optibuy-upload-key-production.jks" ]; then
-              echo "ERROR: Upload keystore not found"
+              echo "ERROR: Upload keystore not found in project directory"
+              ls -la
               exit 1
           fi
           
