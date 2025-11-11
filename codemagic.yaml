@@ -1,6 +1,6 @@
 workflows:
   optibuy:
-    name: OptiBuy - Keystore Detective & Upload Key Match
+    name: OptiBuy - Upload Key Reset Ready (Corrected Fingerprint)
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
@@ -11,12 +11,12 @@ workflows:
         ANDROID_SDK_ROOT: /usr/local/share/android-sdk
         ANDROID_HOME: /usr/local/share/android-sdk
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
-        EXPECTED_FINGERPRINT: "80:71:B8:94:5A:40:B2:83:2C:99:3C:9E:E1:3D:E6:2A:D3:71:4E:50"
+        EXPECTED_FINGERPRINT: "07:1A:D1:37:B9:6A:2B:12:F2:A4:F4:9D:42:BB:19:11:A3:EF:31:CD"
     scripts:
       - name: Keystore Detective - Find Matching Certificate
         script: |
           echo "=== KEYSTORE DETECTIVE: Finding Upload Key Match ==="
-          echo "Target fingerprint: $EXPECTED_FINGERPRINT"
+          echo "Target fingerprint (Google Play Console): $EXPECTED_FINGERPRINT"
           
           # Array of common passwords
           PASSWORDS=("android" "optibuy" "optibuy123" "password" "123456" "optibuy_upload_2025" "release" "key" "debug" "test" "admin" "upload" "keystore" "store" "pass")
@@ -80,7 +80,17 @@ workflows:
                           # Look for certificate files
                           if [ -f "META-INF/CERT.RSA" ]; then
                               echo "Found certificate in $aab_file"
-                              keytool -printcert -file META-INF/CERT.RSA 2>/dev/null | grep "SHA1:" && echo "Certificate found in $aab_file"
+                              AAB_FINGERPRINT=$(keytool -printcert -file META-INF/CERT.RSA 2>/dev/null | grep "SHA1:" | head -1 | awk '{print $2}')
+                              echo "Certificate fingerprint: $AAB_FINGERPRINT"
+                              
+                              if [ "$AAB_FINGERPRINT" = "$EXPECTED_FINGERPRINT" ]; then
+                                  echo "🎉 PERFECT MATCH found in AAB! Extracting certificate..."
+                                  keytool -printcert -rfc -file META-INF/CERT.RSA > ../upload_certificate.pem
+                                  KEYSTORE_FOUND=true
+                                  cd ..
+                                  rm -rf temp_aab_extract
+                                  break 2
+                              fi
                           fi
                           
                           cd ..
@@ -99,27 +109,46 @@ workflows:
               echo "Fingerprint: $EXPECTED_FINGERPRINT"
               echo "Keystore: working-keystore.jks"
           else
-              echo "❌ FAILED: No matching keystore found"
-              echo "Recommendation: Request second upload key reset from Google Play Support"
+              echo "❌ FAILED: No matching keystore found in repository"
+              echo "Google Play Console expects: $EXPECTED_FINGERPRINT"
+              echo ""
+              echo "SOLUTION: Creating new keystore for upload key reset request"
               
-              # Create new keystore as fallback
-              echo "Creating fallback keystore for second upload key reset request..."
+              # Create NEW keystore with STABLE credentials (not random)
+              echo "Creating stable keystore for second upload key reset request..."
               keytool -genkeypair \
                 -alias upload \
                 -keyalg RSA \
                 -keysize 2048 \
                 -validity 9125 \
-                -keystore fallback-keystore.jks \
+                -keystore upload-keystore-new.jks \
                 -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
                 -storepass optibuy_upload_2025 \
                 -keypass optibuy_upload_2025
               
-              FALLBACK_FINGERPRINT=$(keytool -list -v -keystore fallback-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1:" | head -1 | awk '{print $2}')
-              echo "Fallback fingerprint for support request: $FALLBACK_FINGERPRINT"
+              # Export PEM certificate for Google Play Support
+              keytool -export -rfc \
+                -keystore upload-keystore-new.jks \
+                -alias upload \
+                -storepass optibuy_upload_2025 \
+                -file upload_certificate_new.pem
+              
+              NEW_FINGERPRINT=$(keytool -list -v -keystore upload-keystore-new.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1:" | head -1 | awk '{print $2}')
+              echo ""
+              echo "📋 NEW KEYSTORE CREATED:"
+              echo "   SHA1 Fingerprint: $NEW_FINGERPRINT"
+              echo "   PEM Certificate: upload_certificate_new.pem"
+              echo ""
+              echo "📧 NEXT STEP: Request Upload Key Reset from Google Play Support"
+              echo "   1. Go to Google Play Console → Release → Setup → App signing"
+              echo "   2. Click 'Request upload key reset'"
+              echo "   3. Upload: upload_certificate_new.pem"
+              echo "   4. Wait for Google approval (48 hours)"
+              echo "   5. Rebuild AAB after approval"
               
               WORKING_PASSWORD="optibuy_upload_2025"
               WORKING_ALIAS="upload"
-              cp fallback-keystore.jks working-keystore.jks
+              cp upload-keystore-new.jks working-keystore.jks
           fi
           
           # Export environment variables for next step
@@ -127,7 +156,7 @@ workflows:
           echo "export KEYSTORE_ALIAS='$WORKING_ALIAS'" >> keystore_config.sh
           echo "export KEYSTORE_FOUND='$KEYSTORE_FOUND'" >> keystore_config.sh
           
-      - name: Build AAB with Detected/Fallback Keystore
+      - name: Build AAB with Detected/New Keystore
         script: |
           echo "=== Building AAB with Optimal Keystore ==="
           source keystore_config.sh
@@ -219,8 +248,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 2
-                  versionName "1.2.0"
+                  versionCode 3
+                  versionName "1.3.0"
               }
               
               signingConfigs {
@@ -281,7 +310,8 @@ workflows:
                   android:allowBackup="true"
                   android:icon="@mipmap/ic_launcher"
                   android:label="@string/app_name"
-                  android:theme="@style/AppTheme">
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="true">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true">
@@ -300,7 +330,7 @@ workflows:
               <string name="app_name">OptiBuy</string>
               <string name="welcome_title">OptiBuy</string>
               <string name="welcome_subtitle">Collective Purchasing Platform</string>
-              <string name="welcome_description">Upload Key Detective - Keystore Analysis</string>
+              <string name="welcome_description">Ready for Production Deployment</string>
           </resources>
           EOF
           
@@ -320,12 +350,40 @@ workflows:
           
           import androidx.appcompat.app.AppCompatActivity;
           import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
           
           public class MainActivity extends AppCompatActivity {
+              private WebView webView;
+              
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
+                  
+                  webView = new WebView(this);
+                  setContentView(webView);
+                  
+                  WebSettings webSettings = webView.getSettings();
+                  webSettings.setJavaScriptEnabled(true);
+                  webSettings.setDomStorageEnabled(true);
+                  webSettings.setLoadWithOverviewMode(true);
+                  webSettings.setUseWideViewPort(true);
+                  webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                  
+                  webView.setWebViewClient(new WebViewClient());
+                  
+                  // Load your Replit backend
+                  webView.loadUrl("https://opti-buy-tracker-metealper.replit.app");
+              }
+              
+              @Override
+              public void onBackPressed() {
+                  if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
               }
           }
           EOF
@@ -354,6 +412,18 @@ workflows:
           </androidx.constraintlayout.widget.ConstraintLayout>
           EOF
           
+          cat > android/app/proguard-rules.pro << 'EOF'
+          # Add project specific ProGuard rules here.
+          -keep class com.optibuy.collective.** { *; }
+          -dontwarn okio.**
+          -dontwarn retrofit2.**
+          -keepattributes *Annotation*
+          -keepattributes JavascriptInterface
+          -keepclassmembers class * {
+              @android.webkit.JavascriptInterface <methods>;
+          }
+          EOF
+          
           # Create simple app icons
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/mipmap-mdpi/ic_launcher.png
@@ -371,32 +441,51 @@ workflows:
           if [ -f "app/build/outputs/bundle/release/app-release.aab" ]; then
               cd ../..
               
+              # Extract actual fingerprint from built AAB
+              mkdir -p aab_verify
+              cd aab_verify
+              unzip -q ../OptiBuy/android/app/build/outputs/bundle/release/app-release.aab
+              ACTUAL_FINGERPRINT=$(keytool -printcert -file META-INF/*.RSA 2>/dev/null | grep "SHA1:" | head -1 | awk '{print $2}')
+              cd ..
+              rm -rf aab_verify
+              
               if [ "$KEYSTORE_FOUND" = "true" ]; then
-                  cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-perfect-match.aab
-                  echo "=== PERFECT KEYSTORE MATCH AAB READY ===" > deployment_report.txt
+                  cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-perfect-match-v3.aab
+                  echo "=== ✅ PERFECT KEYSTORE MATCH - READY FOR UPLOAD ===" > deployment_report.txt
                   echo "Status: Perfect keystore match found and used" >> deployment_report.txt
-                  echo "Expected fingerprint: $EXPECTED_FINGERPRINT" >> deployment_report.txt
-                  echo "READY FOR GOOGLE PLAY CONSOLE UPLOAD" >> deployment_report.txt
-              else
-                  cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-support-request.aab
-                  ACTUAL_FINGERPRINT=$(keytool -list -v -keystore working-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1:" | head -1 | awk '{print $2}')
-                  echo "=== GOOGLE PLAY SUPPORT REQUEST NEEDED ===" > deployment_report.txt
-                  echo "Status: No matching keystore found" >> deployment_report.txt
-                  echo "Expected fingerprint: $EXPECTED_FINGERPRINT" >> deployment_report.txt
-                  echo "New AAB fingerprint: $ACTUAL_FINGERPRINT" >> deployment_report.txt
-                  echo "ACTION REQUIRED: Request second upload key reset" >> deployment_report.txt
+                  echo "Expected Google Play fingerprint: $EXPECTED_FINGERPRINT" >> deployment_report.txt
+                  echo "Actual AAB fingerprint: $ACTUAL_FINGERPRINT" >> deployment_report.txt
                   echo "" >> deployment_report.txt
-                  echo "Support message template:" >> deployment_report.txt
-                  echo "Subject: Upload Key Reset Request - Second Reset Needed" >> deployment_report.txt
-                  echo "App: OptiBuy (com.optibuy.collective)" >> deployment_report.txt
-                  echo "I need a second upload key reset." >> deployment_report.txt
-                  echo "Current Expected: $EXPECTED_FINGERPRINT" >> deployment_report.txt
-                  echo "New Certificate: $ACTUAL_FINGERPRINT" >> deployment_report.txt
-                  echo "Please update the upload key to match the new certificate." >> deployment_report.txt
+                  echo "✅ READY FOR GOOGLE PLAY CONSOLE UPLOAD" >> deployment_report.txt
+                  echo "   Package: com.optibuy.collective" >> deployment_report.txt
+                  echo "   Version Code: 3" >> deployment_report.txt
+                  echo "   Version Name: 1.3.0" >> deployment_report.txt
+                  echo "   File: optibuy-perfect-match-v3.aab" >> deployment_report.txt
+              else
+                  cp OptiBuy/android/app/build/outputs/bundle/release/app-release.aab ./optibuy-upload-key-reset-v3.aab
+                  echo "=== 📧 GOOGLE PLAY UPLOAD KEY RESET NEEDED ===" > deployment_report.txt
+                  echo "Status: No matching keystore found in repository" >> deployment_report.txt
+                  echo "" >> deployment_report.txt
+                  echo "Expected by Google Play: $EXPECTED_FINGERPRINT" >> deployment_report.txt
+                  echo "New AAB fingerprint: $ACTUAL_FINGERPRINT" >> deployment_report.txt
+                  echo "" >> deployment_report.txt
+                  echo "📋 NEXT STEPS:" >> deployment_report.txt
+                  echo "1. Download: upload_certificate_new.pem (from build artifacts)" >> deployment_report.txt
+                  echo "2. Go to: Google Play Console → Release → Setup → App signing" >> deployment_report.txt
+                  echo "3. Click: 'Request upload key reset'" >> deployment_report.txt
+                  echo "4. Upload: upload_certificate_new.pem" >> deployment_report.txt
+                  echo "5. Wait: 48 hours for Google approval" >> deployment_report.txt
+                  echo "6. Rebuild: This AAB after approval" >> deployment_report.txt
+                  echo "" >> deployment_report.txt
+                  echo "📎 Files ready:" >> deployment_report.txt
+                  echo "   - upload_certificate_new.pem (for Google)" >> deployment_report.txt
+                  echo "   - upload-keystore-new.jks (keep safe for future builds)" >> deployment_report.txt
+                  echo "   - optibuy-upload-key-reset-v3.aab (upload after reset)" >> deployment_report.txt
               fi
               
               echo "AAB generation completed!"
-              ls -la *.aab
+              ls -la *.aab *.pem 2>/dev/null || echo "No PEM files generated (perfect match found)"
+              echo ""
               cat deployment_report.txt
           else
               echo "ERROR: AAB build failed"
@@ -406,6 +495,7 @@ workflows:
     artifacts:
       - "*.aab"
       - "*.jks"
+      - "*.pem"
       - "deployment_report.txt"
       - "keystore_config.sh"
     publishing:
