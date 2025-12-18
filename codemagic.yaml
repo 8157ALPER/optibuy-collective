@@ -1,16 +1,17 @@
 workflows:
   optibuy:
-    name: OptiBuy - Minimal Working Android AAB
+    name: OptiBuy - Permanent Keystore Build
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
-      groups:
-        - android_signing
       vars:
         PACKAGE_NAME: "com.optibuy.collective"
         ANDROID_SDK_ROOT: /usr/local/share/android-sdk
         ANDROID_HOME: /usr/local/share/android-sdk
         JAVA_HOME: /Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+        KEYSTORE_PASSWORD: "OptiBuy2025Secure"
+        KEY_ALIAS: "upload"
+        KEY_PASSWORD: "OptiBuy2025Secure"
     scripts:
       - name: Create Minimal Android Project
         script: |
@@ -47,10 +48,6 @@ workflows:
           org.gradle.parallel=true
           org.gradle.configureondemand=true
           org.gradle.daemon=true
-          MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks
-          MYAPP_UPLOAD_KEY_ALIAS=upload
-          MYAPP_UPLOAD_STORE_PASSWORD=optibuy_upload_2025
-          MYAPP_UPLOAD_KEY_PASSWORD=optibuy_upload_2025
           EOF
           
           echo "Creating settings.gradle..."
@@ -104,26 +101,15 @@ workflows:
               }
               
               signingConfigs {
-                  debug {
-                      storeFile file('debug.keystore')
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
-                  }
                   release {
-                      if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                          storeFile file(MYAPP_UPLOAD_STORE_FILE)
-                          storePassword MYAPP_UPLOAD_STORE_PASSWORD
-                          keyAlias MYAPP_UPLOAD_KEY_ALIAS
-                          keyPassword MYAPP_UPLOAD_KEY_PASSWORD
-                      }
+                      storeFile file('optibuy-permanent-upload.jks')
+                      storePassword System.getenv("KEYSTORE_PASSWORD") ?: "OptiBuy2025Secure"
+                      keyAlias System.getenv("KEY_ALIAS") ?: "upload"
+                      keyPassword System.getenv("KEY_PASSWORD") ?: "OptiBuy2025Secure"
                   }
               }
               
               buildTypes {
-                  debug {
-                      signingConfig signingConfigs.debug
-                  }
                   release {
                       minifyEnabled true
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -160,6 +146,7 @@ workflows:
               <application
                   android:allowBackup="true"
                   android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
                   android:label="@string/app_name"
                   android:theme="@style/AppTheme">
                   <activity
@@ -175,6 +162,21 @@ workflows:
           EOF
           
           echo "Project structure created successfully"
+          
+      - name: Create Permanent Keystore from Base64
+        script: |
+          echo "=== Creating Permanent Keystore ==="
+          cd OptiBuy
+          
+          # Decode the permanent keystore from base64
+          echo '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' | base64 -d > android/app/optibuy-permanent-upload.jks
+          
+          echo "Keystore created. Verifying fingerprint..."
+          keytool -list -v -keystore android/app/optibuy-permanent-upload.jks -storepass OptiBuy2025Secure -alias upload | grep "SHA1"
+          
+          # Export PEM certificate for Google Play
+          keytool -export -rfc -alias upload -file optibuy-upload-certificate.pem -keystore android/app/optibuy-permanent-upload.jks -storepass OptiBuy2025Secure
+          echo "PEM certificate exported for Google Play Console upload"
           
       - name: Create Android Resources and Code
         script: |
@@ -197,9 +199,9 @@ workflows:
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
               <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-                  <item name="colorPrimary">#4CAF50</item>
-                  <item name="colorPrimaryDark">#388E3C</item>
-                  <item name="colorAccent">#FF5722</item>
+                  <item name="colorPrimary">#4285F4</item>
+                  <item name="colorPrimaryDark">#3367D6</item>
+                  <item name="colorAccent">#34A853</item>
               </style>
           </resources>
           EOF
@@ -246,7 +248,7 @@ workflows:
                   android:layout_height="wrap_content"
                   android:text="@string/welcome_description"
                   android:textSize="16sp"
-                  android:textColor="#4CAF50"
+                  android:textColor="#4285F4"
                   android:textStyle="bold"
                   app:layout_constraintTop_toBottomOf="@id/subtitle"
                   app:layout_constraintLeft_toLeftOf="parent"
@@ -305,42 +307,11 @@ workflows:
             echo "App icons created at all densities"
             ls -la android/app/src/main/res/mipmap-*/ic_launcher*.png
           else
-            echo "ERROR: Failed to download icon, using fallback"
-            # Fallback: Create simple colored icon
-            for size in 48 72 96 144 192; do
-              case $size in
-                48) dir="mipmap-mdpi" ;;
-                72) dir="mipmap-hdpi" ;;
-                96) dir="mipmap-xhdpi" ;;
-                144) dir="mipmap-xxhdpi" ;;
-                192) dir="mipmap-xxxhdpi" ;;
-              esac
-              # Create a simple blue placeholder
-              echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGAWCGC2gAAAABJRU5ErkJggg==' | base64 -d > android/app/src/main/res/$dir/ic_launcher.png
-              cp android/app/src/main/res/$dir/ic_launcher.png android/app/src/main/res/$dir/ic_launcher_round.png
-            done
+            echo "ERROR: Failed to download icon"
+            exit 1
           fi
           
           echo "Android resources and code created successfully"
-          
-      - name: Create Upload Keystore
-        script: |
-          echo "=== Creating Upload Keystore ==="
-          cd OptiBuy
-          
-          keytool -genkeypair \
-            -alias upload \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 9125 \
-            -keystore android/app/upload-keystore.jks \
-            -dname "CN=OptiBuy Collective, OU=Mobile Apps, O=OptiBuy, L=Istanbul, ST=Istanbul, C=TR" \
-            -storepass optibuy_upload_2025 \
-            -keypass optibuy_upload_2025
-          
-          echo "Keystore created successfully"
-          ls -la android/app/upload-keystore.jks
-          keytool -list -v -keystore android/app/upload-keystore.jks -storepass optibuy_upload_2025 -alias upload | grep "SHA1"
           
       - name: Build AAB with System Gradle
         script: |
@@ -371,9 +342,9 @@ workflows:
               
               echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
               echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 2" >> google_play_deployment.txt
-              echo "Version Name: 1.2.0" >> google_play_deployment.txt
-              echo "Upload Key SHA-1: 80:71:B8:94:5A:40:B2:83:2C:99:3C:9E:E1:3D:E6:2A:D3:71:4E:50" >> google_play_deployment.txt
+              echo "Version Code: 4" >> google_play_deployment.txt
+              echo "Version Name: 1.4.0" >> google_play_deployment.txt
+              echo "Upload Key SHA-1: B4:D4:43:DA:BC:58:75:01:08:34:68:0B:58:4C:AA:58:58:27:D1:1F" >> google_play_deployment.txt
               echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
               echo "Status: Ready for Google Play Console Upload" >> google_play_deployment.txt
               
@@ -389,7 +360,7 @@ workflows:
     artifacts:
       - "*.aab"
       - "OptiBuy/android/app/build/outputs/bundle/release/app-release.aab"
-      - "OptiBuy/android/app/upload-keystore.jks"
+      - "OptiBuy/optibuy-upload-certificate.pem"
       - "google_play_deployment.txt"
     publishing:
       email:
