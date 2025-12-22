@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 4
-                  versionName "1.4.0"
+                  versionCode 5
+                  versionName "1.5.0"
               }
               
               signingConfigs {
@@ -142,16 +142,29 @@ workflows:
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              
+              <!-- Support all screen sizes including tablets -->
+              <supports-screens
+                  android:smallScreens="true"
+                  android:normalScreens="true"
+                  android:largeScreens="true"
+                  android:xlargeScreens="true"
+                  android:anyDensity="true" />
               
               <application
                   android:allowBackup="true"
                   android:icon="@mipmap/ic_launcher"
                   android:roundIcon="@mipmap/ic_launcher_round"
                   android:label="@string/app_name"
-                  android:theme="@style/AppTheme">
+                  android:theme="@style/AppTheme"
+                  android:hardwareAccelerated="true"
+                  android:usesCleartextTraffic="true">
                   <activity
                       android:name=".MainActivity"
-                      android:exported="true">
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden|keyboard|navigation"
+                      android:screenOrientation="unspecified">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
@@ -206,69 +219,121 @@ workflows:
           </resources>
           EOF
           
-          echo "Creating activity_main.xml layout..."
+          echo "Creating activity_main.xml layout with WebView..."
           cat > android/app/src/main/res/layout/activity_main.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
-          <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto"
+          <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:background="#f8f9fa">
+              android:layout_height="match_parent">
           
-              <TextView
-                  android:id="@+id/title"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="@string/welcome_title"
-                  android:textSize="32sp"
-                  android:textStyle="bold"
-                  android:textColor="#000000"
-                  android:layout_marginBottom="10dp"
-                  app:layout_constraintTop_toTopOf="parent"
-                  app:layout_constraintBottom_toBottomOf="parent"
-                  app:layout_constraintLeft_toLeftOf="parent"
-                  app:layout_constraintRight_toRightOf="parent"
-                  app:layout_constraintVertical_chainStyle="packed" />
+              <WebView
+                  android:id="@+id/webview"
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent" />
           
-              <TextView
-                  android:id="@+id/subtitle"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="@string/welcome_subtitle"
-                  android:textSize="18sp"
-                  android:textColor="#666666"
-                  android:layout_marginBottom="20dp"
-                  app:layout_constraintTop_toBottomOf="@id/title"
-                  app:layout_constraintLeft_toLeftOf="parent"
-                  app:layout_constraintRight_toRightOf="parent" />
-          
-              <TextView
-                  android:id="@+id/description"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="@string/welcome_description"
-                  android:textSize="16sp"
-                  android:textColor="#4285F4"
-                  android:textStyle="bold"
-                  app:layout_constraintTop_toBottomOf="@id/subtitle"
-                  app:layout_constraintLeft_toLeftOf="parent"
-                  app:layout_constraintRight_toRightOf="parent" />
-          
-          </androidx.constraintlayout.widget.ConstraintLayout>
+          </FrameLayout>
           EOF
           
-          echo "Creating MainActivity.java..."
+          echo "Creating MainActivity.java with WebView implementation..."
           cat > android/app/src/main/java/com/optibuy/collective/MainActivity.java << 'EOF'
           package com.optibuy.collective;
           
           import androidx.appcompat.app.AppCompatActivity;
           import android.os.Bundle;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.view.KeyEvent;
+          import android.view.View;
+          import android.view.WindowManager;
+          import android.graphics.Color;
           
           public class MainActivity extends AppCompatActivity {
+              private WebView webView;
+              private static final String APP_URL = "https://opti-buy-tracker-metealper.replit.app";
+              
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
+                  
+                  // Make fullscreen
+                  getWindow().setFlags(
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN
+                  );
+                  
+                  // Hide action bar
+                  if (getSupportActionBar() != null) {
+                      getSupportActionBar().hide();
+                  }
+                  
                   setContentView(R.layout.activity_main);
+                  
+                  webView = findViewById(R.id.webview);
+                  webView.setBackgroundColor(Color.WHITE);
+                  
+                  // Configure WebView settings
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
+                  settings.setLoadsImagesAutomatically(true);
+                  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+                  settings.setSupportZoom(false);
+                  settings.setBuiltInZoomControls(false);
+                  settings.setDisplayZoomControls(false);
+                  settings.setUseWideViewPort(true);
+                  settings.setLoadWithOverviewMode(true);
+                  
+                  // Set WebViewClient to handle navigation within the app
+                  webView.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                          // Keep all navigation within the WebView
+                          view.loadUrl(url);
+                          return true;
+                      }
+                  });
+                  
+                  // Set WebChromeClient for JavaScript alerts and progress
+                  webView.setWebChromeClient(new WebChromeClient());
+                  
+                  // Load the app
+                  webView.loadUrl(APP_URL);
+              }
+              
+              @Override
+              public boolean onKeyDown(int keyCode, KeyEvent event) {
+                  // Handle back button to navigate within WebView
+                  if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
+                      webView.goBack();
+                      return true;
+                  }
+                  return super.onKeyDown(keyCode, event);
+              }
+              
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  webView.onResume();
+              }
+              
+              @Override
+              protected void onPause() {
+                  webView.onPause();
+                  super.onPause();
+              }
+              
+              @Override
+              protected void onDestroy() {
+                  if (webView != null) {
+                      webView.destroy();
+                  }
+                  super.onDestroy();
               }
           }
           EOF
@@ -277,8 +342,10 @@ workflows:
           cat > android/app/proguard-rules.pro << 'EOF'
           # Add project specific ProGuard rules here.
           -keep class com.optibuy.collective.** { *; }
+          -keep class android.webkit.** { *; }
           -dontwarn okio.**
           -dontwarn retrofit2.**
+          -keepattributes JavascriptInterface
           EOF
           
           echo "Downloading and creating app icons..."
@@ -290,22 +357,73 @@ workflows:
             echo "Icon downloaded successfully"
             file icon_original.png
             
-            # Resize to all Android mipmap sizes using sips (macOS)
-            sips -z 48 48 icon_original.png --out android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-            sips -z 72 72 icon_original.png --out android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-            sips -z 96 96 icon_original.png --out android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-            sips -z 144 144 icon_original.png --out android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-            sips -z 192 192 icon_original.png --out android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            # Get original dimensions
+            ORIG_SIZE=$(sips -g pixelWidth icon_original.png | tail -1 | awk '{print $2}')
+            echo "Original icon size: ${ORIG_SIZE}x${ORIG_SIZE}"
             
-            # Create round icons (same as regular for now)
+            # First upscale to 1024x1024 if smaller (for better quality when scaling down)
+            if [ "$ORIG_SIZE" -lt 1024 ]; then
+              echo "Upscaling from ${ORIG_SIZE} to 1024 for better quality..."
+              sips -z 1024 1024 icon_original.png --out icon_1024.png
+            else
+              cp icon_original.png icon_1024.png
+            fi
+            
+            # Create adaptive icon directories
+            mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+            mkdir -p android/app/src/main/res/drawable
+            
+            # Resize to all Android mipmap sizes using sips (macOS)
+            # Standard launcher icons
+            sips -z 48 48 icon_1024.png --out android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            sips -z 72 72 icon_1024.png --out android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+            sips -z 96 96 icon_1024.png --out android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            sips -z 144 144 icon_1024.png --out android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            sips -z 192 192 icon_1024.png --out android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            
+            # Foreground icons for adaptive icons (slightly larger - 108dp with 72dp safe zone)
+            # mdpi: 108px, hdpi: 162px, xhdpi: 216px, xxhdpi: 324px, xxxhdpi: 432px
+            sips -z 108 108 icon_1024.png --out android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+            sips -z 162 162 icon_1024.png --out android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+            sips -z 216 216 icon_1024.png --out android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+            sips -z 324 324 icon_1024.png --out android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+            sips -z 432 432 icon_1024.png --out android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+            
+            # Create round icons (same as regular)
             cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
             cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
             cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
             cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
             cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
             
-            echo "App icons created at all densities"
+            # Create adaptive icon background color (white background to make logo pop)
+            cat > android/app/src/main/res/drawable/ic_launcher_background.xml << 'BGEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="#FFFFFF"/>
+</shape>
+BGEOF
+            
+            # Create adaptive icon XML for Android 8+ (API 26+)
+            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'ADAPTEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
+ADAPTEOF
+            
+            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml << 'ADAPTEOF'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
+ADAPTEOF
+            
+            echo "App icons created at all densities with adaptive icon support"
             ls -la android/app/src/main/res/mipmap-*/ic_launcher*.png
+            ls -la android/app/src/main/res/mipmap-anydpi-v26/
           else
             echo "ERROR: Failed to download icon"
             exit 1
@@ -342,10 +460,12 @@ workflows:
               
               echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
               echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 4" >> google_play_deployment.txt
-              echo "Version Name: 1.4.0" >> google_play_deployment.txt
+              echo "Version Code: 5" >> google_play_deployment.txt
+              echo "Version Name: 1.5.0" >> google_play_deployment.txt
               echo "Upload Key SHA-1: B4:D4:43:DA:BC:58:75:01:08:34:68:0B:58:4C:AA:58:58:27:D1:1F" >> google_play_deployment.txt
               echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
+              echo "Features: WebView wrapper loading remote app" >> google_play_deployment.txt
+              echo "Tablet Support: Yes (all screen sizes)" >> google_play_deployment.txt
               echo "Status: Ready for Google Play Console Upload" >> google_play_deployment.txt
               
               echo "AAB generation completed successfully!"
