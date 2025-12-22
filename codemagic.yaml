@@ -397,29 +397,23 @@ workflows:
             cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
             
             # Create adaptive icon background color (white background to make logo pop)
-            cat > android/app/src/main/res/drawable/ic_launcher_background.xml << 'BGEOF'
-<?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#FFFFFF"/>
-</shape>
-BGEOF
+            echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/drawable/ic_launcher_background.xml
+            echo '<shape xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/main/res/drawable/ic_launcher_background.xml
+            echo '    <solid android:color="#FFFFFF"/>' >> android/app/src/main/res/drawable/ic_launcher_background.xml
+            echo '</shape>' >> android/app/src/main/res/drawable/ic_launcher_background.xml
             
             # Create adaptive icon XML for Android 8+ (API 26+)
-            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml << 'ADAPTEOF'
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-</adaptive-icon>
-ADAPTEOF
+            echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '    <background android:drawable="@drawable/ic_launcher_background"/>' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            echo '</adaptive-icon>' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
             
-            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml << 'ADAPTEOF'
-<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-</adaptive-icon>
-ADAPTEOF
+            echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+            echo '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+            echo '    <background android:drawable="@drawable/ic_launcher_background"/>' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+            echo '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+            echo '</adaptive-icon>' >> android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
             
             echo "App icons created at all densities with adaptive icon support"
             ls -la android/app/src/main/res/mipmap-*/ic_launcher*.png
