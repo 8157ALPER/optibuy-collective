@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 7
-                  versionName "1.7.0"
+                  versionCode 8
+                  versionName "1.8.0"
               }
               
               signingConfigs {
@@ -211,10 +211,12 @@ workflows:
           cat > android/app/src/main/res/values/styles.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+              <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
                   <item name="colorPrimary">#4285F4</item>
                   <item name="colorPrimaryDark">#3367D6</item>
                   <item name="colorAccent">#34A853</item>
+                  <item name="android:windowFullscreen">true</item>
+                  <item name="android:windowNoTitle">true</item>
               </style>
           </resources>
           EOF
@@ -245,8 +247,6 @@ workflows:
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
           import android.view.KeyEvent;
-          import android.view.View;
-          import android.view.WindowManager;
           import android.graphics.Color;
           
           public class MainActivity extends AppCompatActivity {
@@ -256,18 +256,6 @@ workflows:
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  
-                  // Make fullscreen
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
-                  
-                  // Hide action bar
-                  if (getSupportActionBar() != null) {
-                      getSupportActionBar().hide();
-                  }
-                  
                   setContentView(R.layout.activity_main);
                   
                   webView = findViewById(R.id.webview);
@@ -454,8 +442,8 @@ workflows:
               
               echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
               echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 7" >> google_play_deployment.txt
-              echo "Version Name: 1.7.0" >> google_play_deployment.txt
+              echo "Version Code: 8" >> google_play_deployment.txt
+              echo "Version Name: 1.8.0" >> google_play_deployment.txt
               echo "Upload Key SHA-1: 31:B4:DD:5F:53:3C:D6:90:70:45:45:CD:C6:3B:9D:A7:E2:5E:76:EB" >> google_play_deployment.txt
               echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
               echo "Features: WebView wrapper loading remote app" >> google_play_deployment.txt
