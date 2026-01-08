@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 8
-                  versionName "1.8.0"
+                  versionCode 9
+                  versionName "1.9.0"
               }
               
               signingConfigs {
@@ -226,12 +226,40 @@ workflows:
           <?xml version="1.0" encoding="utf-8"?>
           <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
               android:layout_width="match_parent"
-              android:layout_height="match_parent">
+              android:layout_height="match_parent"
+              android:background="#FFFFFF">
           
               <WebView
                   android:id="@+id/webview"
                   android:layout_width="match_parent"
                   android:layout_height="match_parent" />
+          
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:orientation="vertical"
+                  android:gravity="center"
+                  android:id="@+id/loadingContainer">
+                  
+                  <ProgressBar
+                      android:id="@+id/progressBar"
+                      style="?android:attr/progressBarStyleHorizontal"
+                      android:layout_width="200dp"
+                      android:layout_height="wrap_content"
+                      android:max="100"
+                      android:progress="0" />
+                  
+                  <TextView
+                      android:id="@+id/errorText"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="20dp"
+                      android:textColor="#FF0000"
+                      android:textSize="16sp"
+                      android:visibility="gone"
+                      android:gravity="center"
+                      android:padding="20dp" />
+              </LinearLayout>
           
           </FrameLayout>
           EOF
@@ -241,63 +269,131 @@ workflows:
           package com.optibuy.collective;
           
           import androidx.appcompat.app.AppCompatActivity;
+          import android.app.AlertDialog;
+          import android.content.DialogInterface;
+          import android.net.http.SslError;
           import android.os.Bundle;
+          import android.util.Log;
+          import android.webkit.SslErrorHandler;
           import android.webkit.WebView;
           import android.webkit.WebViewClient;
           import android.webkit.WebChromeClient;
           import android.webkit.WebSettings;
+          import android.webkit.WebResourceError;
+          import android.webkit.WebResourceRequest;
           import android.view.KeyEvent;
+          import android.view.View;
+          import android.widget.ProgressBar;
+          import android.widget.TextView;
           import android.graphics.Color;
           
           public class MainActivity extends AppCompatActivity {
+              private static final String TAG = "OptiBuy";
               private WebView webView;
+              private ProgressBar progressBar;
+              private TextView errorText;
               private static final String APP_URL = "https://opti-buy-tracker-metealper.replit.app";
               
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
                   
-                  webView = findViewById(R.id.webview);
-                  webView.setBackgroundColor(Color.WHITE);
-                  
-                  // Configure WebView settings
-                  WebSettings settings = webView.getSettings();
-                  settings.setJavaScriptEnabled(true);
-                  settings.setDomStorageEnabled(true);
-                  settings.setDatabaseEnabled(true);
-                  settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-                  settings.setAllowFileAccess(true);
-                  settings.setAllowContentAccess(true);
-                  settings.setLoadsImagesAutomatically(true);
-                  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-                  settings.setSupportZoom(false);
-                  settings.setBuiltInZoomControls(false);
-                  settings.setDisplayZoomControls(false);
-                  settings.setUseWideViewPort(true);
-                  settings.setLoadWithOverviewMode(true);
-                  
-                  // Set WebViewClient to handle navigation within the app
-                  webView.setWebViewClient(new WebViewClient() {
-                      @Override
-                      public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                          // Keep all navigation within the WebView
-                          view.loadUrl(url);
-                          return true;
+                  try {
+                      setContentView(R.layout.activity_main);
+                      
+                      webView = findViewById(R.id.webview);
+                      progressBar = findViewById(R.id.progressBar);
+                      errorText = findViewById(R.id.errorText);
+                      
+                      if (webView == null) {
+                          Log.e(TAG, "WebView is null");
+                          showError("Failed to initialize app");
+                          return;
                       }
-                  });
-                  
-                  // Set WebChromeClient for JavaScript alerts and progress
-                  webView.setWebChromeClient(new WebChromeClient());
-                  
-                  // Load the app
-                  webView.loadUrl(APP_URL);
+                      
+                      webView.setBackgroundColor(Color.WHITE);
+                      
+                      // Configure WebView settings
+                      WebSettings settings = webView.getSettings();
+                      settings.setJavaScriptEnabled(true);
+                      settings.setDomStorageEnabled(true);
+                      settings.setDatabaseEnabled(true);
+                      settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+                      settings.setAllowFileAccess(true);
+                      settings.setAllowContentAccess(true);
+                      settings.setLoadsImagesAutomatically(true);
+                      settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                      settings.setSupportZoom(false);
+                      settings.setBuiltInZoomControls(false);
+                      settings.setDisplayZoomControls(false);
+                      settings.setUseWideViewPort(true);
+                      settings.setLoadWithOverviewMode(true);
+                      settings.setMediaPlaybackRequiresUserGesture(false);
+                      
+                      // Set WebViewClient with error handling
+                      webView.setWebViewClient(new WebViewClient() {
+                          @Override
+                          public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                              view.loadUrl(url);
+                              return true;
+                          }
+                          
+                          @Override
+                          public void onPageFinished(WebView view, String url) {
+                              super.onPageFinished(view, url);
+                              if (progressBar != null) progressBar.setVisibility(View.GONE);
+                              if (webView != null) webView.setVisibility(View.VISIBLE);
+                              Log.d(TAG, "Page loaded: " + url);
+                          }
+                          
+                          @Override
+                          public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                              super.onReceivedError(view, request, error);
+                              if (request.isForMainFrame()) {
+                                  Log.e(TAG, "WebView error: " + error.getDescription());
+                                  showError("Connection error. Please check your internet.");
+                              }
+                          }
+                          
+                          @Override
+                          public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                              Log.w(TAG, "SSL error: " + error.toString());
+                              handler.proceed();
+                          }
+                      });
+                      
+                      // Set WebChromeClient for progress
+                      webView.setWebChromeClient(new WebChromeClient() {
+                          @Override
+                          public void onProgressChanged(WebView view, int newProgress) {
+                              if (progressBar != null) {
+                                  progressBar.setProgress(newProgress);
+                              }
+                          }
+                      });
+                      
+                      // Load the app
+                      Log.d(TAG, "Loading URL: " + APP_URL);
+                      webView.loadUrl(APP_URL);
+                      
+                  } catch (Exception e) {
+                      Log.e(TAG, "Error in onCreate: " + e.getMessage(), e);
+                      showError("App initialization failed: " + e.getMessage());
+                  }
+              }
+              
+              private void showError(String message) {
+                  if (errorText != null) {
+                      errorText.setText(message);
+                      errorText.setVisibility(View.VISIBLE);
+                  }
+                  if (progressBar != null) progressBar.setVisibility(View.GONE);
+                  if (webView != null) webView.setVisibility(View.GONE);
               }
               
               @Override
               public boolean onKeyDown(int keyCode, KeyEvent event) {
-                  // Handle back button to navigate within WebView
-                  if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
+                  if (keyCode == KeyEvent.KEYCODE_BACK && webView != null && webView.canGoBack()) {
                       webView.goBack();
                       return true;
                   }
@@ -307,12 +403,12 @@ workflows:
               @Override
               protected void onResume() {
                   super.onResume();
-                  webView.onResume();
+                  if (webView != null) webView.onResume();
               }
               
               @Override
               protected void onPause() {
-                  webView.onPause();
+                  if (webView != null) webView.onPause();
                   super.onPause();
               }
               
@@ -442,8 +538,8 @@ workflows:
               
               echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
               echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 8" >> google_play_deployment.txt
-              echo "Version Name: 1.8.0" >> google_play_deployment.txt
+              echo "Version Code: 9" >> google_play_deployment.txt
+              echo "Version Name: 1.9.0" >> google_play_deployment.txt
               echo "Upload Key SHA-1: 31:B4:DD:5F:53:3C:D6:90:70:45:45:CD:C6:3B:9D:A7:E2:5E:76:EB" >> google_play_deployment.txt
               echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
               echo "Features: WebView wrapper loading remote app" >> google_play_deployment.txt
