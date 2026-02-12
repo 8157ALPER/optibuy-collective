@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 11
-                  versionName "2.1.0"
+                  versionCode 12
+                  versionName "2.2.0"
               }
               
               signingConfigs {
