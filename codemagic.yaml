@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 13
-                  versionName "2.3.0"
+                  versionCode 14
+                  versionName "2.4.0"
               }
               
               signingConfigs {
@@ -160,7 +160,7 @@ workflows:
                   android:label="@string/app_name"
                   android:theme="@style/AppTheme"
                   android:hardwareAccelerated="true"
-                  android:usesCleartextTraffic="true">
+                  android:usesCleartextTraffic="false">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
@@ -183,7 +183,7 @@ workflows:
           cd OptiBuy
           
           # Decode the NEW permanent keystore from base64
-          echo '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' | base64 -d > android/app/optibuy-permanent-upload.jks
+          echo 'MIIK5AIBAzCCCo4GCSqGSIb3DQEHAaCCCn8Eggp7MIIKdzCCBa4GCSqGSIb3DQEHAaCCBZ8EggWbMIIFlzCCBZMGCyqGSIb3DQEMCgECoIIFQDCCBTwwZgYJKoZIhvcNAQUNMFkwOAYJKoZIhvcNAQUMMCsEFC+Er4pKzxWeKb4zgzBBRKm1PGggAgInEAIBIDAMBggqhkiG9w0CCQUAMB0GCWCGSAFlAwQBKgQQYZTcbw8DiL5zBcnC/tlOzgSCBNC8Xgz8LfrpohTaP3MMChGZFk5LElrt2MKgigpC4IlTnDOxTITt9dyGrkoxYLgAz3AcUZZ+4l2IFnQXNcGBqUM7eI5V2vsUFsRxYM/ZUgWU7za2gNp+7wtiOI0c2NMz8wyDp6jFdMGQLYKfqv6V5/WlpnL7jnX/tOsTaxXL8QBbx+FGBZ8V4PEHcES2mjuSYKaSYLRvQxOpk6UkJdIa7Adkxr6ddD3Aff+3rGcEuBNPdFOo/ZUjoRnxz2AIP6xBVRvIdSSl7p9Z32zaU8OgQCX4bsIzet5uODISISvm20nEgGCcMoQSDff6LMjVqlOOcQE4WTfZU0kVXqHliWcQ59cxOCHWU3GFasfrfsSmmb1FWqW5pMjZGjlu4HN7BZau6lVDio0qCqnq+8cqCS5WStilU9a1wD8XEmCV/LlFGCaoAkMncqhSJQC29UCw9FZZu18pdPkdV4OSsn8pzGev14dl6dyOUDq/fEOqaWA9OAccFBhuhNysms7LjadfnrJNU5vrCLJ4Ldwe3eyKzL4zj1LdK2E+YYxMzgwrUBA+O8T3kQFqD+uYwpN6GhzeSrqJ2NMw1nROKxm4YqdUrFfhlqkO7Ur0UjS46hSA36xy7A0ChB6F9A9pjTXwhE1e5bJWoc23cOXxJAvXG6mESWXZ0qbMSq0jrCgS9tuJPdQIPhUVIi4uDwI23H1yTib5Z3tfx7gCkgOMYjxSgeXWqEnm+TH+HKYhwx41TkNubLZz1J7YTNIWoSlnsDfQTFzFHvjDgBA3mRYJz8Hj89bjXbW3O8Sn7CqaOI0DzdVgViZ/hu+ZJ5cG6y5Lopt/YR2YI5iZkNQCSs0Wd96hRGqwqlquxROOSWiMwDRXFS/lLy2Jf94fdl1os2z1VOXdkZx1iUmBuKdWQBAI7AVdyhL48Rc3z+EiuDbD0+lKhYgVm8yZkmFtHtIXyduRfTg8ruwvTj/vm6wzf2dCsx2YgOZdEIwxrB0DGab+tKvThU5z6cKV8yeamAKx1jDkZ+R/rGVKvj59wwi7wP3ogrykE5Y36EvxnfCjchJ8hISsneSnfmyAwaZ1LPjIHtgaDC0PuZ2YkBgG7ns8FAu5grUAQyLEW8nNIgBS2iZxum0eJU90hxbheVzh1f1LwS3N/9yv/Ssbe7IoPfbJkBg/o9eWx+lTmbKp9rRoyJ0LioM8PKs5eNqFRefWuhglkbq4UQqBCkk6lDolxeuCI7VAa/tzYpYqjWS2i8d+iGKL/ysZgkC5DDGXEyVi04G0nxcTZspjQqQdMYbe4Kkd13ka9ZPFpJEV5oN5x289UNnGVDC9b8VjUMoTdFnCZv7fEsrTM/INXGMr3N9DT4o5I+KBB8NC8iF+E6xrFpbKVg++WEbV5+8o74p7rDvnS7tH2dHUhQHWHzrHG7lhv4jQOZ0sdQW+9QsVlcdrufcKfFgW4hceG3+GE8UpzOKsIFeJiFFA4RqifZ4EgZkEY8RGDVgniabqQj/XZmnxzfoWISUY2oyeRp7STGOI1ZryU2KNZtUciz+vnsWL4HFxELuGHiJIMyNLiT/dwU3+q7foI6Oo0zk3AyPyMOknVbssIc42bKAzzkTvcOkev8f3Fhp1ouoQsvTVz2dv7uT6d2f720Qfx6tfEfSk7kvHc91TOjFAMBsGCSqGSIb3DQEJFDEOHgwAdQBwAGwAbwBhAGQwIQYJKoZIhvcNAQkVMRQEElRpbWUgMTc2NjQxMTc1...' | base64 -d > android/app/optibuy-permanent-upload.jks
           
           echo "Keystore created. Verifying fingerprint..."
           keytool -list -v -keystore android/app/optibuy-permanent-upload.jks -storepass OptiBuy2025NewKey -alias upload | grep "SHA1"
@@ -336,7 +336,6 @@ workflows:
                   try {
                       setContentView(R.layout.activity_main);
                       
-                      // Get UI references
                       rootContainer = findViewById(R.id.rootContainer);
                       loadingContainer = findViewById(R.id.loadingContainer);
                       progressBar = findViewById(R.id.progressBar);
@@ -352,13 +351,11 @@ workflows:
                           }
                       });
                       
-                      // Check WebView availability BEFORE creating it
                       if (!isWebViewAvailable()) {
                           showWebViewMissingError();
                           return;
                       }
                       
-                      // Delay WebView init slightly to let system stabilize
                       new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                           @Override
                           public void run() {
@@ -374,7 +371,6 @@ workflows:
               
               private boolean isWebViewAvailable() {
                   try {
-                      // Try to get the current WebView package
                       PackageInfo webViewPackage = WebViewCompat.getCurrentWebViewPackage(this);
                       if (webViewPackage == null) {
                           Log.e(TAG, "No WebView package found");
@@ -384,7 +380,6 @@ workflows:
                       String packageName = webViewPackage.packageName;
                       Log.d(TAG, "WebView package found: " + packageName + " v" + webViewPackage.versionName);
                       
-                      // CRITICAL: Also check if the package is ENABLED (not just installed)
                       PackageManager pm = getPackageManager();
                       ApplicationInfo appInfo = pm.getApplicationInfo(packageName, 0);
                       boolean isEnabled = appInfo.enabled;
@@ -414,7 +409,6 @@ workflows:
                       "Or enable Chrome browser in Settings > Apps";
                   showError(errorMessage);
                   
-                  // Change retry button to open Play Store
                   retryButton.setText("Open Play Store");
                   retryButton.setOnClickListener(new View.OnClickListener() {
                       @Override
@@ -436,7 +430,6 @@ workflows:
                   try {
                       Log.d(TAG, "Creating WebView programmatically...");
                       
-                      // Create WebView programmatically (not from XML)
                       webView = new WebView(this);
                       webView.setLayoutParams(new FrameLayout.LayoutParams(
                           ViewGroup.LayoutParams.MATCH_PARENT,
@@ -445,19 +438,17 @@ workflows:
                       webView.setBackgroundColor(Color.WHITE);
                       webView.setVisibility(View.GONE);
                       
-                      // Add WebView to the root container
                       rootContainer.addView(webView, 0);
                       
-                      // Configure WebView settings
                       WebSettings settings = webView.getSettings();
                       settings.setJavaScriptEnabled(true);
                       settings.setDomStorageEnabled(true);
                       settings.setDatabaseEnabled(true);
                       settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-                      settings.setAllowFileAccess(true);
-                      settings.setAllowContentAccess(true);
+                      settings.setAllowFileAccess(false);
+                      settings.setAllowContentAccess(false);
                       settings.setLoadsImagesAutomatically(true);
-                      settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                      settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
                       settings.setSupportZoom(false);
                       settings.setBuiltInZoomControls(false);
                       settings.setDisplayZoomControls(false);
@@ -465,11 +456,15 @@ workflows:
                       settings.setLoadWithOverviewMode(true);
                       settings.setMediaPlaybackRequiresUserGesture(false);
                       
-                      // Set WebViewClient with error handling
                       webView.setWebViewClient(new WebViewClient() {
                           @Override
-                          public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                              view.loadUrl(url);
+                          public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                              String url = request.getUrl().toString();
+                              if (url.startsWith("https://opti-buy-tracker-metealper.replit.app")) {
+                                  return false;
+                              }
+                              Intent intent = new Intent(Intent.ACTION_VIEW, request.getUrl());
+                              startActivity(intent);
                               return true;
                           }
                           
@@ -492,16 +487,14 @@ workflows:
                           
                           @Override
                           public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-                              Log.w(TAG, "SSL error: " + error.toString());
+                              Log.e(TAG, "SSL error: " + error.toString());
                               handler.cancel();
                               showError("Secure connection failed.\n\nPlease check your internet connection and try again.");
                           }
                       });
                       
-                      // Set WebChromeClient for progress
                       webView.setWebChromeClient(new WebChromeClient());
                       
-                      // Load the app
                       Log.d(TAG, "Loading URL: " + APP_URL);
                       statusText.setText("Connecting to OptiBuy...");
                       webView.loadUrl(APP_URL);
@@ -601,15 +594,13 @@ workflows:
             mkdir -p android/app/src/main/res/drawable
             
             # Resize to all Android mipmap sizes using sips (macOS)
-            # Standard launcher icons
             sips -z 48 48 icon_1024.png --out android/app/src/main/res/mipmap-mdpi/ic_launcher.png
             sips -z 72 72 icon_1024.png --out android/app/src/main/res/mipmap-hdpi/ic_launcher.png
             sips -z 96 96 icon_1024.png --out android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
             sips -z 144 144 icon_1024.png --out android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
             sips -z 192 192 icon_1024.png --out android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
             
-            # Foreground icons for adaptive icons (slightly larger - 108dp with 72dp safe zone)
-            # mdpi: 108px, hdpi: 162px, xhdpi: 216px, xxhdpi: 324px, xxxhdpi: 432px
+            # Foreground icons for adaptive icons
             sips -z 108 108 icon_1024.png --out android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
             sips -z 162 162 icon_1024.png --out android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
             sips -z 216 216 icon_1024.png --out android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
@@ -623,7 +614,7 @@ workflows:
             cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
             cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
             
-            # Create adaptive icon background color (white background to make logo pop)
+            # Create adaptive icon background color
             echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/drawable/ic_launcher_background.xml
             echo '<shape xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/main/res/drawable/ic_launcher_background.xml
             echo '    <solid android:color="#FFFFFF"/>' >> android/app/src/main/res/drawable/ic_launcher_background.xml
@@ -681,12 +672,12 @@ workflows:
               
               echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
               echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 11" >> google_play_deployment.txt
-              echo "Version Name: 2.1.0" >> google_play_deployment.txt
-              echo "Upload Key SHA-1: 31:B4:DD:5F:53:3C:D6:90:70:45:45:CD:C6:3B:9D:A7:E2:5E:76:EB" >> google_play_deployment.txt
+              echo "Version Code: 14" >> google_play_deployment.txt
+              echo "Version Name: 2.4.0" >> google_play_deployment.txt
               echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
               echo "Features: WebView wrapper loading remote app" >> google_play_deployment.txt
               echo "Tablet Support: Yes (all screen sizes)" >> google_play_deployment.txt
+              echo "SSL Security: handler.cancel() - Google Play compliant" >> google_play_deployment.txt
               echo "Status: Ready for Google Play Console Upload" >> google_play_deployment.txt
               
               echo "AAB generation completed successfully!"
