@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 12
-                  versionName "2.2.0"
+                  versionCode 13
+                  versionName "2.3.0"
               }
               
               signingConfigs {
@@ -493,7 +493,8 @@ workflows:
                           @Override
                           public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                               Log.w(TAG, "SSL error: " + error.toString());
-                              handler.proceed();
+                              handler.cancel();
+                              showError("Secure connection failed.\n\nPlease check your internet connection and try again.");
                           }
                       });
                       
