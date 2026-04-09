@@ -96,8 +96,8 @@ workflows:
                   applicationId "com.optibuy.collective"
                   minSdkVersion rootProject.ext.minSdkVersion
                   targetSdkVersion rootProject.ext.targetSdkVersion
-                  versionCode 15
-                  versionName "2.5.0"
+                  versionCode 16
+                  versionName "2.6.0"
               }
               
               signingConfigs {
@@ -712,8 +712,8 @@ workflows:
               
               echo "=== GOOGLE PLAY CONSOLE UPLOAD READY ===" > google_play_deployment.txt
               echo "Package: com.optibuy.collective" >> google_play_deployment.txt
-              echo "Version Code: 15" >> google_play_deployment.txt
-              echo "Version Name: 2.5.0" >> google_play_deployment.txt
+              echo "Version Code: 16" >> google_play_deployment.txt
+              echo "Version Name: 2.6.0" >> google_play_deployment.txt
               echo "Target SDK: 35 (Android 15)" >> google_play_deployment.txt
               echo "Features: WebView wrapper loading remote app" >> google_play_deployment.txt
               echo "Tablet Support: Yes (all screen sizes)" >> google_play_deployment.txt
