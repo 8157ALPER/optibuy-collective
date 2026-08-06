@@ -33,7 +33,7 @@ workflows:
           cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
           distributionBase=GRADLE_USER_HOME
           distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-9.1.0-all.zip
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-all.zip
           zipStoreBase=GRADLE_USER_HOME
           zipStorePath=wrapper/dists
           EOF
@@ -71,7 +71,7 @@ workflows:
                   mavenCentral()
               }
               dependencies {
-                  classpath 'com.android.tools.build:gradle:9.0.0'
+                  classpath 'com.android.tools.build:gradle:8.1.4'
               }
           }
           
